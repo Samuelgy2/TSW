@@ -1,0 +1,52 @@
+{
+  "name": "tsw-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:diff": "supabase db diff",
+    "db:push": "supabase db push",
+    "db:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts",
+    "db:types:remote": "supabase gen types typescript --linked > src/lib/supabase/database.types.ts",
+    "verificar:rls": "tsx scripts/verificar-rls.ts",
+    "verificar:inventario": "tsx scripts/verificar-inventario.ts",
+    "verificar:auditoria": "tsx scripts/verificar-auditoria.ts",
+    "verificar": "npm run verificar:rls && npm run verificar:inventario && npm run verificar:auditoria",
+    "advisors": "supabase db advisors --linked --type all --level info"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^3.9.1",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.47.10",
+    "@tanstack/react-query": "^5.62.11",
+    "framer-motion": "^11.15.0",
+    "next": "^15.1.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-hook-form": "^7.54.2",
+    "resend": "^4.0.1",
+    "server-only": "^0.0.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.2.0",
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "dotenv": "^18.0.0",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "^15.1.3",
+    "supabase": "^2.117.0",
+    "tailwindcss": "^4.0.0",
+    "tsx": "^4.23.13",
+    "typescript": "^5.7.2"
+  }
+}

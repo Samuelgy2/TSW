@@ -1,0 +1,32 @@
+# dependencias
+/node_modules
+/.pnp
+.pnp.*
+
+# build
+/.next/
+/out/
+/build
+next-env.d.ts.timestamp
+*.tsbuildinfo
+
+# entorno
+.env
+.env.local
+.env.*.local
+
+# supabase
+/supabase/.branches
+/supabase/.temp
+
+# sistema
+.DS_Store
+Thumbs.db
+
+# logs
+npm-debug.log*
+yarn-error.log*
+
+# vercel
+.vercel
+tsconfig.tsbuildinfo

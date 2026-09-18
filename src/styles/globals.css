@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Colorimetría TSW.
+   El rojo es acento (CTAs, estados activos, énfasis), nunca fondo dominante.
+   Contraste mínimo AA (4.5:1) en todo texto.
+   --------------------------------------------------------------------------- */
+@theme {
+  --color-azul-profundo: #0b1b33;
+  --color-azul-medio: #12294d;
+  --color-rojo: #d7263d;
+  --color-rojo-oscuro: #a31128;
+  --color-blanco: #ffffff;
+  --color-gris-frio: #f2f4f7;
+  --color-gris-borde: #dce3ec;
+  --color-texto-sec: #46566f;
+
+  --font-display: var(--fuente-display), system-ui, sans-serif;
+  --font-sans: var(--fuente-cuerpo), system-ui, sans-serif;
+
+  /* Ancho máximo del contenido. */
+  --contenedor-ancho: 80rem;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-blanco);
+    color: var(--color-azul-profundo);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+  }
+
+  /* Foco siempre visible: es requisito de accesibilidad, no decoración. */
+  :focus-visible {
+    outline: 3px solid var(--color-rojo);
+    outline-offset: 2px;
+  }
+
+  /* Área táctil mínima de 44px en controles interactivos. */
+  button,
+  a[href],
+  input,
+  select,
+  textarea,
+  [role="button"] {
+    min-height: 44px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Caja de contenido con los márgenes laterales de todo el sitio.
+     Mobile first: 16px a 360px, más aire a partir de sm. */
+  .contenedor {
+    width: 100%;
+    max-width: var(--contenedor-ancho);
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .contenedor {
+      padding-inline: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .contenedor {
+      padding-inline: 2rem;
+    }
+  }
+
+  /* Salto al contenido: visible solo cuando recibe el foco. */
+  .salto-contenido {
+    position: absolute;
+    left: 1rem;
+    top: -100%;
+    z-index: 100;
+    border-radius: 0.375rem;
+    background-color: var(--color-rojo);
+    padding: 0.75rem 1.25rem;
+    font-weight: 600;
+    color: var(--color-blanco);
+    transition: top 150ms ease;
+  }
+
+  .salto-contenido:focus {
+    top: 1rem;
+  }
+}
