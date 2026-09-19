@@ -8,8 +8,9 @@ const TONOS: Record<TonoBadge, string> = {
   neutro: "bg-gris-frio text-texto-sec border-gris-borde",
   // Rojo como acento: fondo tenue y texto oscuro para no perder contraste.
   acento: "bg-rojo/10 text-rojo-oscuro border-rojo/30",
-  exito: "bg-emerald-50 text-emerald-800 border-emerald-200",
-  aviso: "bg-amber-50 text-amber-900 border-amber-200",
+  // Colores funcionales de globals.css. Medidos: exito 4.69:1, aviso 5.41:1.
+  exito: "bg-exito-fondo text-exito border-exito/30",
+  aviso: "bg-aviso-fondo text-aviso border-aviso/30",
   oscuro: "bg-azul-profundo text-blanco border-azul-profundo",
 };
 

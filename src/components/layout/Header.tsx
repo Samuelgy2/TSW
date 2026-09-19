@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { useTrampaFoco } from "@/lib/accesibilidad/trampaFoco";
 import { AnimatePresence, motion, useMovimientoReducido } from "@/lib/animaciones";
 import { NAVEGACION } from "@/config/sitio";
 import { useCarrito } from "@/features/pedidos/carrito";
@@ -197,7 +198,11 @@ function EnlaceCarrito() {
   );
 }
 
-/** Menú de pantalla completa en móvil. */
+/**
+ * Menú de pantalla completa en móvil. Mientras está abierto el foco queda
+ * atrapado dentro; Escape lo cierra (lo escucha el Header) y al cerrarse el
+ * foco vuelve al botón de hamburguesa.
+ */
 function MenuMovil({
   abierto,
   alCerrar,
@@ -208,11 +213,17 @@ function MenuMovil({
   rutaActiva: string;
 }) {
   const reducido = useMovimientoReducido();
+  const panel = useRef<HTMLDivElement>(null);
+  useTrampaFoco(panel, abierto);
 
   return (
     <AnimatePresence>
       {abierto && (
         <motion.div
+          ref={panel}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menú principal"
           id="menu-movil"
           initial={reducido ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}

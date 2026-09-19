@@ -2,8 +2,23 @@
 
 /* ---------------------------------------------------------------------------
    Colorimetría TSW.
+
+   Tailwind 4: `@theme` es el equivalente de `theme.extend` de la v3. Cada
+   variable de aquí se vuelve utilidad (bg-rojo, text-texto-sec, border-gris-
+   borde...) y a la vez existe como variable CSS. No hay tailwind.config.
+
    El rojo es acento (CTAs, estados activos, énfasis), nunca fondo dominante.
-   Contraste mínimo AA (4.5:1) en todo texto.
+   Contraste mínimo AA (4.5:1) en todo texto. Ratios medidos:
+
+     blanco  sobre rojo            4.96:1  ok texto
+     rojo    sobre blanco          4.96:1  ok texto
+     rojo    sobre gris-frio       4.50:1  ok texto, justo en el límite
+     rojo    sobre azul-profundo   3.47:1  SOLO texto grande (≥24px) o elementos
+                                           de interfaz: barras, indicadores
+     rojo    sobre azul-medio      2.92:1  NUNCA, ni como texto ni como UI
+     texto-sec sobre blanco        7.44:1  ok
+     texto-sec sobre gris-frio     6.76:1  ok
+     blanco/60 sobre azul-profundo 6.85:1  ok (texto atenuado del footer)
    --------------------------------------------------------------------------- */
 @theme {
   --color-azul-profundo: #0b1b33;
@@ -14,6 +29,13 @@
   --color-gris-frio: #f2f4f7;
   --color-gris-borde: #dce3ec;
   --color-texto-sec: #46566f;
+
+  /* Colores funcionales para estados (pedido pagado, reserva por vencer).
+     No son de marca: se usan solo en insignias y avisos, nunca en superficies. */
+  --color-exito: #1f7a4d;
+  --color-exito-fondo: #e6f4ec;
+  --color-aviso: #8a5a00;
+  --color-aviso-fondo: #fff4d6;
 
   --font-display: var(--fuente-display), system-ui, sans-serif;
   --font-sans: var(--fuente-cuerpo), system-ui, sans-serif;
@@ -41,6 +63,10 @@
     font-family: var(--font-display);
     text-transform: uppercase;
     letter-spacing: 0.01em;
+    /* Una palabra larga en Archivo Black a 360px no cabe en la línea: se
+       parte con guion antes que desbordar la pantalla. */
+    overflow-wrap: anywhere;
+    hyphens: auto;
   }
 
   /* Foco siempre visible: es requisito de accesibilidad, no decoración. */
@@ -73,24 +99,49 @@
 
 @layer components {
   /* Caja de contenido con los márgenes laterales de todo el sitio.
-     Mobile first: 16px a 360px, más aire a partir de sm. */
+     Mobile first: 16px a 360px, más aire a partir de sm.
+
+     El `max()` con env(safe-area-inset-*) respeta las zonas seguras del
+     iPhone en horizontal (viewport-fit=cover en el layout raíz): el margen
+     nunca baja del mínimo, pero crece si la pantalla tiene muesca. */
   .contenedor {
+    --contenedor-margen: 1rem;
     width: 100%;
     max-width: var(--contenedor-ancho);
     margin-inline: auto;
-    padding-inline: 1rem;
+    padding-inline: max(var(--contenedor-margen), env(safe-area-inset-left))
+      max(var(--contenedor-margen), env(safe-area-inset-right));
   }
 
   @media (min-width: 640px) {
     .contenedor {
-      padding-inline: 1.5rem;
+      --contenedor-margen: 1.5rem;
     }
   }
 
   @media (min-width: 1024px) {
     .contenedor {
-      padding-inline: 2rem;
+      --contenedor-margen: 2rem;
     }
+  }
+
+  /* Titular del hero. clamp(): 34px a 360px de ancho, 78px a partir de
+     1440px, sin saltos entre puntos de quiebre. */
+  .titulo-hero {
+    font-size: clamp(2rem, 1rem + 5vw, 4.875rem);
+    line-height: 1.05;
+  }
+
+  /* Título de página interior (hero de matrículas, tienda...). 32px a 360px,
+     56px desde ~1200px. */
+  .titulo-pagina {
+    font-size: clamp(2rem, 1.25rem + 3.4vw, 3.5rem);
+    line-height: 1.05;
+  }
+
+  /* Relleno inferior para la barra de gestos del iPhone. Lo usa el footer. */
+  .zona-segura-inferior {
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
   /* Salto al contenido: visible solo cuando recibe el foco. */

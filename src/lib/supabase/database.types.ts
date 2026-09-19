@@ -42,6 +42,7 @@ export type Database = {
       competencia: {
         Row: {
           actualizado_en: string
+          autorizacion_imagen_en: string | null
           creado_en: string
           cuerpo: string | null
           destacado: boolean
@@ -54,6 +55,7 @@ export type Database = {
         }
         Insert: {
           actualizado_en?: string
+          autorizacion_imagen_en?: string | null
           creado_en?: string
           cuerpo?: string | null
           destacado?: boolean
@@ -66,6 +68,7 @@ export type Database = {
         }
         Update: {
           actualizado_en?: string
+          autorizacion_imagen_en?: string | null
           creado_en?: string
           cuerpo?: string | null
           destacado?: boolean
@@ -346,6 +349,7 @@ export type Database = {
           creado_en: string
           descripcion: string | null
           id: string
+          imagen_path: string | null
           nombre: string
           orden: number
           slug: string
@@ -357,6 +361,7 @@ export type Database = {
           creado_en?: string
           descripcion?: string | null
           id?: string
+          imagen_path?: string | null
           nombre: string
           orden?: number
           slug: string
@@ -368,6 +373,7 @@ export type Database = {
           creado_en?: string
           descripcion?: string | null
           id?: string
+          imagen_path?: string | null
           nombre?: string
           orden?: number
           slug?: string
@@ -509,11 +515,13 @@ export type Database = {
         Args: { p_cantidad: number; p_variante_id: string }
         Returns: number
       }
+      eliminar_resultado: { Args: { p_actor_id: string; p_id: string }; Returns: undefined }
       establecer_actor: { Args: { p_actor_id: string }; Returns: undefined }
       generar_referencia_pedido: { Args: never; Returns: string }
       guardar_competencia: {
         Args: {
           p_actor_id: string
+          p_autorizacion_imagen?: boolean
           p_cuerpo?: string
           p_destacado?: boolean
           p_estado?: Database["public"]["Enums"]["estado_publicacion"]
@@ -605,6 +613,7 @@ export type Database = {
           p_categoria?: Database["public"]["Enums"]["categoria_producto"]
           p_descripcion?: string
           p_id?: string
+          p_imagen_path?: string
           p_nombre?: string
           p_orden?: number
           p_slug?: string
@@ -616,6 +625,7 @@ export type Database = {
           creado_en: string
           descripcion: string | null
           id: string
+          imagen_path: string | null
           nombre: string
           orden: number
           slug: string
@@ -685,6 +695,7 @@ export type Database = {
         Args: { p_cantidad: number; p_variante_id: string }
         Returns: number
       }
+      reordenar_niveles: { Args: { p_actor_id: string; p_ids: string[] }; Returns: undefined }
       publicar_documento_version: {
         Args: {
           p_actor_id: string

@@ -114,13 +114,8 @@ export function UltimosResultados({
                           </table>
                         )}
 
-                        <Boton
-                          href={`/competencias#${competencia.slug}`}
-                          variante="fantasma"
-                          tamano="sm"
-                          className="mt-4 px-0"
-                        >
-                          Ver la competencia
+                        <Boton href="/competencias" variante="fantasma" tamano="sm" className="mt-4 px-0">
+                          Ver el historial completo
                         </Boton>
                       </CardCuerpo>
                     </Card>

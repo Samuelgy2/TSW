@@ -13,7 +13,7 @@ export type ItemAcordeon = {
 
 export type AcordeonProps = {
   items: ItemAcordeon[];
-  /** Si es true, solo un panel abierto a la vez. */
+  /** Un solo panel abierto a la vez. Es el comportamiento por defecto. */
   exclusivo?: boolean;
   /** Ids abiertos al montar. */
   abiertosInicial?: string[];
@@ -25,7 +25,7 @@ export type AcordeonProps = {
  * desmonta al cerrarse, así que su contenido no queda accesible por teclado
  * mientras está oculto.
  */
-export function Acordeon({ items, exclusivo = false, abiertosInicial = [], className }: AcordeonProps) {
+export function Acordeon({ items, exclusivo = true, abiertosInicial = [], className }: AcordeonProps) {
   const [abiertos, setAbiertos] = useState<string[]>(abiertosInicial);
   const base = useId();
   const reducido = useMovimientoReducido();

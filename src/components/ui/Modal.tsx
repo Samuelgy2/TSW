@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
+import { useTrampaFoco } from "@/lib/accesibilidad/trampaFoco";
 import { AnimatePresence, motion, useMovimientoReducido } from "@/lib/animaciones";
 import { cn } from "@/lib/utils";
 
@@ -16,62 +17,32 @@ export type ModalProps = {
   className?: string;
 };
 
-const SELECTOR_FOCALIZABLES =
-  'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
-
 /**
  * Diálogo modal accesible: rol `dialog`, foco atrapado, Escape cierra, el fondo
  * no hace scroll y al cerrarse el foco vuelve a donde estaba.
  */
 export function Modal({ abierto, alCerrar, titulo, children, pie, className }: ModalProps) {
   const panel = useRef<HTMLDivElement>(null);
-  const focoPrevio = useRef<HTMLElement | null>(null);
   const reducido = useMovimientoReducido();
 
-  const alTeclear = useCallback(
-    (evento: KeyboardEvent) => {
-      if (evento.key === "Escape") {
-        alCerrar();
-        return;
-      }
-      if (evento.key !== "Tab" || !panel.current) return;
-
-      // Trampa de foco: el tabulador circula dentro del diálogo.
-      const focalizables = panel.current.querySelectorAll<HTMLElement>(SELECTOR_FOCALIZABLES);
-      if (focalizables.length === 0) return;
-
-      const primero = focalizables[0] as HTMLElement;
-      const ultimo = focalizables[focalizables.length - 1] as HTMLElement;
-
-      if (evento.shiftKey && document.activeElement === primero) {
-        evento.preventDefault();
-        ultimo.focus();
-      } else if (!evento.shiftKey && document.activeElement === ultimo) {
-        evento.preventDefault();
-        primero.focus();
-      }
-    },
-    [alCerrar],
-  );
+  useTrampaFoco(panel, abierto);
 
   useEffect(() => {
     if (!abierto) return;
 
-    focoPrevio.current = document.activeElement as HTMLElement | null;
+    function alTeclear(evento: KeyboardEvent) {
+      if (evento.key === "Escape") alCerrar();
+    }
+
     const desbordeOriginal = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     document.addEventListener("keydown", alTeclear);
 
-    // El foco entra al diálogo en cuanto se abre.
-    const primero = panel.current?.querySelector<HTMLElement>(SELECTOR_FOCALIZABLES);
-    (primero ?? panel.current)?.focus();
-
     return () => {
       document.removeEventListener("keydown", alTeclear);
       document.body.style.overflow = desbordeOriginal;
-      focoPrevio.current?.focus();
     };
-  }, [abierto, alTeclear]);
+  }, [abierto, alCerrar]);
 
   if (typeof document === "undefined") return null;
 

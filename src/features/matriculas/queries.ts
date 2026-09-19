@@ -3,14 +3,15 @@ import type { DocumentoConVersion } from "./types";
 
 /**
  * Documentos activos con su versión vigente, para la página de matrículas.
- * RLS ya deja fuera los documentos inactivos y las versiones archivadas; el
- * filtro de aquí es por claridad, no por seguridad.
+ * RLS ya deja fuera los documentos inactivos y las versiones archivadas; los
+ * filtros de aquí se repiten a propósito: la política no es la única defensa.
  */
 export async function listarDocumentosPublicados(): Promise<DocumentoConVersion[]> {
   const supabase = await crearClienteServidor();
   const { data, error } = await supabase
     .from("documento")
     .select("*, documento_version(*)")
+    .eq("activo", true)
     .is("documento_version.archivado_en", null)
     .order("orden", { ascending: true });
 

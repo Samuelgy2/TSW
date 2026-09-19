@@ -2,29 +2,38 @@ import { crearClienteServidor } from "@/lib/supabase/server";
 import { ErrorNoEncontrado } from "@/lib/errors";
 import type { Competencia, CompetenciaConResultados } from "./types";
 
-/** Calendario público, de la más reciente a la más antigua. */
+/**
+ * Calendario público, de la más reciente a la más antigua. RLS ya deja fuera
+ * borradores y archivadas; el filtro se repite para no depender solo de ella.
+ */
 export async function listarCompetencias(): Promise<Competencia[]> {
   const supabase = await crearClienteServidor();
   const { data, error } = await supabase
     .from("competencia")
     .select("*")
+    .eq("estado", "publicado")
     .order("fecha", { ascending: false });
 
   if (error) throw error;
   return data ?? [];
 }
 
-/** La competencia destacada de la portada. Solo puede haber una. */
-export async function obtenerCompetenciaDestacada(): Promise<Competencia | null> {
+/** La competencia destacada, con sus resultados. Solo puede haber una. */
+export async function obtenerCompetenciaDestacada(): Promise<CompetenciaConResultados | null> {
   const supabase = await crearClienteServidor();
   const { data, error } = await supabase
     .from("competencia")
-    .select("*")
+    .select("*, resultado(*)")
     .eq("destacado", true)
+    .eq("estado", "publicado")
+    .order("puesto", { referencedTable: "resultado", ascending: true })
     .maybeSingle();
 
   if (error) throw error;
-  return data;
+  if (!data) return null;
+
+  const { resultado, ...competencia } = data;
+  return { ...competencia, resultados: resultado };
 }
 
 export async function obtenerCompetenciaPorSlug(
@@ -35,6 +44,7 @@ export async function obtenerCompetenciaPorSlug(
     .from("competencia")
     .select("*, resultado(*)")
     .eq("slug", slug)
+    .eq("estado", "publicado")
     .order("puesto", { referencedTable: "resultado", ascending: true })
     .maybeSingle();
 
@@ -54,6 +64,7 @@ export async function listarCompetenciasConResultados(): Promise<CompetenciaConR
   const { data, error } = await supabase
     .from("competencia")
     .select("*, resultado(*)")
+    .eq("estado", "publicado")
     .order("fecha", { ascending: false })
     .order("puesto", { referencedTable: "resultado", ascending: true });
 

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo_Black, Barlow } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import { ProveedorCarrito } from "@/features/pedidos/carrito";
 import { SITIO } from "@/config/sitio";
@@ -30,9 +31,13 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  // Barra del navegador en azul profundo, a juego con el header.
   themeColor: "#0B1B33",
   width: "device-width",
   initialScale: 1,
+  // El contenido llega hasta los bordes del iPhone; los márgenes seguros se
+  // compensan con env(safe-area-inset-*) en globals.css.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -44,6 +49,8 @@ export default function RootLayout({
         {/* El carrito vive en localStorage y su contador se lee desde el
             header, así que el proveedor envuelve todo el árbol. */}
         <ProveedorCarrito>{children}</ProveedorCarrito>
+        {/* Métricas de rendimiento reales (Core Web Vitals) en Vercel. */}
+        <SpeedInsights />
       </body>
     </html>
   );

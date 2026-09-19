@@ -98,7 +98,7 @@ export function SelectorNiveles({ niveles }: { niveles: Nivel[] }) {
                   <span
                     className={cn(
                       "font-display text-2xl leading-none",
-                      seleccionado ? "text-rojo" : "text-gris-borde",
+                      seleccionado ? "text-rojo" : "text-texto-sec",
                     )}
                   >
                     {String(item.orden).padStart(2, "0")}

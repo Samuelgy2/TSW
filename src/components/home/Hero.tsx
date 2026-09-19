@@ -1,165 +1,180 @@
-"use client";
+import { getImageProps } from "next/image";
+import { preload } from "react-dom";
 
-import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
-
-import { AnimatePresence, motion, useMovimientoReducido } from "@/lib/animaciones";
-import { Boton } from "@/components/ui";
-import { cn } from "@/lib/utils";
+import { Boton, Carrusel } from "@/components/ui";
 
 type Diapositiva = {
-  imagen: string;
-  alt: string;
+  id: string;
+  /** Etiqueta corta sobre el titular y nombre del indicador. */
+  nombre: string;
   titulo: string;
   texto: string;
   accion: { etiqueta: string; href: string };
   secundaria?: { etiqueta: string; href: string };
+  /** Foto horizontal para tablet y escritorio (1920×1080). */
+  imagen: string;
+  /** Recorte vertical para celular (900×1200): la pista horizontal no sirve en vertical. */
+  imagenMovil: string;
+  alt: string;
 };
 
 /**
  * Las fotos son marcadores generados. Se reemplazan en /public/imagenes/
- * conservando los nombres, y el texto alternativo debe describir la foto real.
+ * conservando los nombres y los dos recortes, y el texto alternativo debe
+ * describir la foto real.
  */
 const DIAPOSITIVAS: Diapositiva[] = [
   {
-    imagen: "/imagenes/hero-1.jpg",
-    alt: "[Describir la foto: deportistas del club en la pista de BMX]",
+    id: "escuela",
+    nombre: "La escuela",
     titulo: "Escuela de BMX",
     texto: "Formación desde la iniciación hasta la competencia.",
     accion: { etiqueta: "Ver matrículas", href: "/matriculas" },
     secundaria: { etiqueta: "Conocer los semilleros", href: "/semilleros" },
+    imagen: "/imagenes/prueba 1.jpeg",
+    imagenMovil: "/imagenes/hero-1-movil.jpg",
+    alt: "[Describir la foto: deportistas del club en la pista de BMX]",
   },
   {
-    imagen: "/imagenes/hero-2.jpg",
-    alt: "[Describir la foto: entrenamiento de los semilleros]",
+    id: "semilleros",
+    nombre: "Formación",
     titulo: "Semilleros y niveles",
     texto: "Una ruta clara, con criterios de promoción definidos.",
     accion: { etiqueta: "Ver los niveles", href: "/semilleros" },
+    imagen: "/imagenes/prueba2.jpeg",
+    imagenMovil: "/imagenes/hero-2-movil.jpg",
+    alt: "[Describir la foto: entrenamiento de los semilleros]",
   },
   {
-    imagen: "/imagenes/hero-3.jpg",
-    alt: "[Describir la foto: podio de una competencia]",
+    id: "competencias",
+    nombre: "Resultados",
     titulo: "Competencias",
     texto: "Calendario y resultados de nuestros riders.",
     accion: { etiqueta: "Ver resultados", href: "/competencias" },
+    imagen: "/imagenes/hero-3.jpg",
+    imagenMovil: "/imagenes/hero-3-movil.jpg",
+    alt: "[Describir la foto: podio de una competencia]",
   },
 ];
 
-const INTERVALO_MS = 7000;
+/** Punto de quiebre `sm` de Tailwind: por debajo va el recorte vertical. */
+const MEDIA_MOVIL = "(max-width: 639px)";
+const MEDIA_ESCRITORIO = "(min-width: 640px)";
 
+/**
+ * Portada: carrusel a sangre. Server Component; el estado vive en Carrusel.
+ * El titular de la primera diapositiva es el h1 de la página; los demás son h2.
+ */
 export function Hero() {
-  const [indice, setIndice] = useState(0);
-  const [pausado, setPausado] = useState(false);
-  const reducido = useMovimientoReducido();
+  return (
+    <Carrusel
+      etiqueta="Presentación de la escuela"
+      intervaloMs={6000}
+      className="bg-azul-profundo text-blanco"
+      claseDiapositiva="flex min-h-[560px] items-end sm:min-h-[620px] lg:min-h-[680px]"
+      diapositivas={DIAPOSITIVAS.map((diapositiva, i) => ({
+        id: diapositiva.id,
+        nombre: diapositiva.nombre,
+        contenido: <Diapositiva diapositiva={diapositiva} primera={i === 0} />,
+      }))}
+    />
+  );
+}
 
-  const ir = useCallback((siguiente: number) => {
-    setIndice(((siguiente % DIAPOSITIVAS.length) + DIAPOSITIVAS.length) % DIAPOSITIVAS.length);
-  }, []);
-
-  // El avance automático se apaga con movimiento reducido y mientras el
-  // visitante tiene el cursor o el foco dentro del carrusel.
-  useEffect(() => {
-    if (reducido || pausado) return;
-    const temporizador = window.setInterval(() => {
-      setIndice((actual) => (actual + 1) % DIAPOSITIVAS.length);
-    }, INTERVALO_MS);
-    return () => window.clearInterval(temporizador);
-  }, [reducido, pausado]);
-
-  const actual = DIAPOSITIVAS[indice] as Diapositiva;
+function Diapositiva({ diapositiva, primera }: { diapositiva: Diapositiva; primera: boolean }) {
+  const Titulo = primera ? "h1" : "h2";
 
   return (
-    <section
-      aria-roledescription="carrusel"
-      aria-label="Presentación de la escuela"
-      className="relative isolate flex min-h-[560px] items-end overflow-hidden bg-azul-profundo text-blanco sm:min-h-[620px] lg:min-h-[680px]"
-      onMouseEnter={() => setPausado(true)}
-      onMouseLeave={() => setPausado(false)}
-      onFocusCapture={() => setPausado(true)}
-      onBlurCapture={() => setPausado(false)}
-    >
-      {/* Foto a sangre. La primera se precarga: es el LCP de la portada. */}
-      {DIAPOSITIVAS.map((diapositiva, i) => (
-        <Image
-          key={diapositiva.imagen}
-          src={diapositiva.imagen}
-          alt={i === indice ? diapositiva.alt : ""}
-          fill
-          priority={i === 0}
-          sizes="100vw"
-          className={cn(
-            "-z-10 object-cover transition-opacity duration-500",
-            i === indice ? "opacity-100" : "opacity-0",
-          )}
-          aria-hidden={i === indice ? undefined : true}
-        />
-      ))}
+    <>
+      <FotoHero diapositiva={diapositiva} prioridad={primera} />
 
-      {/* Overlay azul: sin él, el texto blanco no alcanza el contraste AA. */}
+      {/* Capa de contraste. En móvil la foto ocupa más y el texto se pierde
+          sin ella; abajo, donde va el texto, el azul es sólido. */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 -z-10 bg-gradient-to-t from-azul-profundo via-azul-profundo/80 to-azul-profundo/40"
+        className="absolute inset-0 bg-linear-to-t from-azul-profundo via-azul-profundo/75 to-azul-profundo/25"
       />
 
-      <div className="contenedor pb-14 pt-24 sm:pb-16 lg:pb-20">
-        <div aria-live="polite" aria-atomic="true" className="max-w-2xl">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={indice}
-              initial={reducido ? false : { opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={reducido ? undefined : { opacity: 0, y: -8 }}
-              transition={{ duration: 0.35 }}
-            >
-              <p className="mb-3 inline-block bg-rojo px-3 py-1 text-xs font-bold uppercase tracking-[0.2em]">
-                {`Diapositiva ${indice + 1} de ${DIAPOSITIVAS.length}`}
-              </p>
-              <h1 className="text-4xl leading-[1.05] sm:text-6xl lg:text-7xl">{actual.titulo}</h1>
-              <p className="mt-4 max-w-xl text-lg text-blanco/85 sm:text-xl">{actual.texto}</p>
-            </motion.div>
-          </AnimatePresence>
+      {/* pb deja sitio a los indicadores, que viven en el borde inferior. */}
+      <div className="contenedor relative pb-20 pt-24 sm:pb-24 lg:pb-28">
+        <div className="max-w-2xl">
+          <p className="mb-3 inline-block bg-rojo px-3 py-1 text-xs font-bold uppercase tracking-[0.2em]">
+            {diapositiva.nombre}
+          </p>
+          <Titulo className="titulo-hero">{diapositiva.titulo}</Titulo>
+          <p className="mt-4 max-w-xl text-lg text-blanco/85 sm:text-xl">{diapositiva.texto}</p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Boton href={actual.accion.href} tamano="lg">
-              {actual.accion.etiqueta}
+            <Boton href={diapositiva.accion.href} tamano="lg">
+              {diapositiva.accion.etiqueta}
             </Boton>
-            {actual.secundaria && (
-              <Boton
-                href={actual.secundaria.href}
-                tamano="lg"
-                variante="secundario"
-                className="border-blanco text-blanco hover:bg-blanco hover:text-azul-profundo"
-              >
-                {actual.secundaria.etiqueta}
+            {diapositiva.secundaria && (
+              <Boton href={diapositiva.secundaria.href} tamano="lg" variante="secundario" fondo="oscuro">
+                {diapositiva.secundaria.etiqueta}
               </Boton>
             )}
           </div>
         </div>
-
-        {/* Indicadores: botones reales, no puntos decorativos. */}
-        <div className="mt-10 flex items-center gap-3">
-          {DIAPOSITIVAS.map((diapositiva, i) => (
-            <button
-              key={diapositiva.imagen}
-              type="button"
-              onClick={() => ir(i)}
-              aria-current={i === indice ? "true" : undefined}
-              className="group flex min-h-[44px] items-center focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-rojo"
-            >
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "block h-1.5 rounded-full transition-all duration-300",
-                  i === indice ? "w-12 bg-rojo" : "w-6 bg-blanco/40 group-hover:bg-blanco/70",
-                )}
-              />
-              <span className="sr-only">
-                Ir a la diapositiva {i + 1}: {diapositiva.titulo}
-              </span>
-            </button>
-          ))}
-        </div>
       </div>
-    </section>
+    </>
+  );
+}
+
+/**
+ * Foto a sangre con art direction: `<picture>` sirve el recorte vertical en
+ * celular y el horizontal desde `sm`. Ambas fuentes pasan por el optimizador
+ * de next/image vía getImageProps.
+ *
+ * La primera foto es el LCP de la portada: carga ansiosa, prioridad alta y
+ * precarga de la fuente que corresponda al ancho. Las demás, perezosas.
+ * No hay layout shift: la diapositiva tiene alto mínimo fijo y la foto es
+ * absoluta dentro de ella.
+ */
+function FotoHero({ diapositiva, prioridad }: { diapositiva: Diapositiva; prioridad: boolean }) {
+  // `priority` solo quita el lazy; fetchPriority hay que pedirlo aparte.
+  const comunes = {
+    alt: diapositiva.alt,
+    sizes: "100vw",
+    quality: 75,
+    priority: prioridad,
+    fetchPriority: prioridad ? ("high" as const) : undefined,
+  };
+
+  const {
+    props: { srcSet: srcSetEscritorio },
+  } = getImageProps({ ...comunes, src: diapositiva.imagen, width: 1920, height: 1080 });
+
+  const {
+    props: { srcSet: srcSetMovil, ...propsImg },
+  } = getImageProps({ ...comunes, src: diapositiva.imagenMovil, width: 900, height: 1200 });
+
+  if (prioridad && srcSetMovil && srcSetEscritorio) {
+    preload(propsImg.src, {
+      as: "image",
+      imageSrcSet: srcSetMovil,
+      imageSizes: "100vw",
+      media: MEDIA_MOVIL,
+      fetchPriority: "high",
+    });
+    preload(diapositiva.imagen, {
+      as: "image",
+      imageSrcSet: srcSetEscritorio,
+      imageSizes: "100vw",
+      media: MEDIA_ESCRITORIO,
+      fetchPriority: "high",
+    });
+  }
+
+  return (
+    <picture>
+      <source media={MEDIA_ESCRITORIO} srcSet={srcSetEscritorio} sizes="100vw" />
+      {/* eslint-disable-next-line jsx-a11y/alt-text -- alt viene en propsImg */}
+      <img
+        {...propsImg}
+        srcSet={srcSetMovil}
+        decoding="async"
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+    </picture>
   );
 }

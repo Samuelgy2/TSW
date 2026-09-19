@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { Boton } from "@/components/ui";
 import { CONTACTO, ENLACES_LEGALES, NAVEGACION, REDES, SITIO } from "@/config/sitio";
 
 export function Footer() {
@@ -78,11 +79,15 @@ export function Footer() {
         </div>
       </div>
 
-      <div className="border-t border-blanco/10">
-        <div className="contenedor flex flex-col gap-4 py-6 text-sm text-blanco/70 sm:flex-row sm:items-center sm:justify-between">
+      <div className="zona-segura-inferior border-t border-blanco/10">
+        <div className="contenedor flex flex-col gap-4 py-6 text-sm text-blanco/70 lg:flex-row lg:items-center lg:justify-between">
           <p>
             © {anio} {SITIO.nombreLargo}. Todos los derechos reservados.
           </p>
+          {/* Acceso al panel: discreto, pero alcanzable desde cualquier página. */}
+          <Boton href="/admin/login" variante="secundario" fondo="oscuro" tamano="sm" className="self-start lg:order-last">
+            Acceso administrador
+          </Boton>
           <ul className="flex flex-wrap gap-x-6 gap-y-2">
             {ENLACES_LEGALES.map((enlace) => (
               <li key={enlace.href}>

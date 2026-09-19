@@ -36,3 +36,26 @@ export function SkeletonTarjeta({ className }: { className?: string }) {
     </div>
   );
 }
+
+/** Hueco del hero de página interior, para los loading.tsx. */
+export function SkeletonHero({ oscuro = false }: { oscuro?: boolean }) {
+  return (
+    <div className={cn("py-12 sm:py-16 lg:py-20", oscuro ? "bg-azul-profundo" : "bg-gris-frio")}>
+      <div className="contenedor flex flex-col gap-4">
+        <Skeleton className={cn("h-10 w-2/3 max-w-md sm:h-14", oscuro && "bg-blanco/15")} />
+        <Skeleton className={cn("h-6 w-full max-w-lg", oscuro && "bg-blanco/15")} />
+      </div>
+    </div>
+  );
+}
+
+/** Varias filas de lista o tabla simuladas. */
+export function SkeletonFilas({ filas = 4, className }: { filas?: number; className?: string }) {
+  return (
+    <div className={cn("flex flex-col gap-3", className)} aria-hidden="true">
+      {Array.from({ length: filas }).map((_, i) => (
+        <Skeleton key={i} className="h-20 w-full" />
+      ))}
+    </div>
+  );
+}

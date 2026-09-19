@@ -2,6 +2,8 @@ import path from "node:path";
 
 import type { NextConfig } from "next";
 
+const supabaseUrl = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:54321");
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Fija la raíz del proyecto: sin esto Next puede tomar un lockfile de un
@@ -19,11 +21,14 @@ const nextConfig: NextConfig = {
   // —el móvil, por ejemplo— en vez de localhost.
   allowedDevOrigins: ["192.168.13.1", "localhost", "127.0.0.1"],
   images: {
+    // Storage de Supabase: imágenes de productos y competencias. El host sale
+    // de la URL configurada, así sirve igual con el proyecto enlazado que con
+    // el stack local (http://127.0.0.1:54321).
     remotePatterns: [
       {
-        protocol: "https",
-        // Storage de Supabase: imágenes de productos y competencias.
-        hostname: "[REF-PROYECTO].supabase.co",
+        protocol: supabaseUrl.protocol.replace(":", "") as "http" | "https",
+        hostname: supabaseUrl.hostname,
+        port: supabaseUrl.port,
         pathname: "/storage/v1/object/public/**",
       },
     ],

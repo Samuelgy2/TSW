@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from "react";
 
 import { IndicadorActivo } from "@/lib/animaciones";
 import { cn } from "@/lib/utils";
@@ -23,10 +23,20 @@ export type TabsProps = {
 /**
  * Pestañas con patrón ARIA completo: `tablist`, foco itinerante y navegación
  * con flechas, Inicio y Fin. La barra roja viaja entre pestañas con `layoutId`.
+ *
+ * La lista no envuelve: en móvil se desplaza en horizontal con scroll nativo
+ * y la pestaña activa se trae a la vista sola. Así cinco niveles a 360px no
+ * se apilan en tres filas.
  */
 export function Tabs({ opciones, valor, alCambiar, etiqueta, children, className }: TabsProps) {
   const base = useId();
   const contenedor = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    contenedor.current
+      ?.querySelector<HTMLButtonElement>('[role="tab"][aria-selected="true"]')
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [valor]);
 
   function alTeclear(evento: KeyboardEvent<HTMLDivElement>) {
     const indice = opciones.findIndex((o) => o.valor === valor);
@@ -55,7 +65,7 @@ export function Tabs({ opciones, valor, alCambiar, etiqueta, children, className
         role="tablist"
         aria-label={etiqueta}
         onKeyDown={alTeclear}
-        className="flex flex-wrap gap-1 border-b border-gris-borde"
+        className="flex gap-1 overflow-x-auto border-b border-gris-borde [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {opciones.map((opcion) => {
           const activa = opcion.valor === valor;
@@ -70,8 +80,8 @@ export function Tabs({ opciones, valor, alCambiar, etiqueta, children, className
               tabIndex={activa ? 0 : -1}
               onClick={() => alCambiar(opcion.valor)}
               className={cn(
-                "relative min-h-[44px] px-4 py-2 text-base font-semibold transition-colors",
-                "focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-rojo",
+                "relative min-h-[44px] shrink-0 whitespace-nowrap px-4 py-2 text-base font-semibold transition-colors",
+                "focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-rojo",
                 activa ? "text-rojo" : "text-texto-sec hover:text-azul-profundo",
               )}
             >
