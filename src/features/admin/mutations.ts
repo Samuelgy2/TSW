@@ -70,6 +70,13 @@ const RUTAS_POR_ENTIDAD = {
   competencia: ["/", "/competencias"],
   producto: ["/", "/tienda"],
   pedido: [],
+  // Contenido editable del sitio (migración 19, contenido_sitio). Una entrada
+  // por sección: cada una afecta solo a las páginas que la leen.
+  contenido_deportes: ["/", "/semilleros", "/tienda", "/matriculas"],
+  contenido_portada: ["/"],
+  contenido_matriculas: ["/matriculas"],
+  contenido_semilleros: ["/semilleros"],
+  contenido_tienda: ["/tienda"],
 } as const;
 
 export type EntidadRevalidable = keyof typeof RUTAS_POR_ENTIDAD;

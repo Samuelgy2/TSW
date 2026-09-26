@@ -114,7 +114,189 @@ async function main(): Promise<void> {
     );
   }
 
-  // --- 5. La bitácora registra el actor real ---------------------------------
+  const servicio = clienteServicio();
+
+  // --- 5. Storage con sesión de un usuario SIN rol de administrador -----------
+  //
+  // Autorizado por Samuel explícitamente para ESTA prueba y solo para ella (la
+  // regla del proyecto es no autenticarse como una cuenta real; una cuenta
+  // temporal propia, creada y borrada aquí mismo, no lo es).
+  //
+  // La migración 20 endureció las políticas de escritura de Storage para exigir
+  // es_admin(). Lo que no está probado todavía es el caso real: no una lectura
+  // de esquema, sino una sesión de verdad —token de acceso real, no el actor
+  // simulado de la sección 6— intentando subir, reemplazar y borrar en los
+  // cuatro buckets. Las cuatro operaciones tienen que fallar.
+  //
+  // Cada intento se verifica dos veces: por el resultado que devuelve la
+  // llamada, y por el ESTADO REAL en el bucket leído con la service role
+  // después. Hace falta la segunda: `storage.remove()` sobre un objeto que RLS
+  // no deja borrar no siempre vuelve con un error —puede volver con éxito y
+  // cero objetos borrados, igual que un DELETE de tabla sin filas afectadas—,
+  // así que lo único que prueba de verdad que la política contuvo el borrado es
+  // comprobar que el archivo sigue ahí.
+  {
+    const correoInvitado = `verificacion-storage-${Date.now()}@example.com`;
+    const claveInvitado = `Verificacion-${Date.now()}!`;
+
+    // Sin app_metadata.tipo: el hook de la migración 15 lo manda a
+    // perfil_usuario, inactivo. Nunca tiene fila en perfil_admin, así que
+    // es_admin() da falso pase lo que pase con `activo`.
+    const altaInvitado = await servicio.auth.admin.createUser({
+      email: correoInvitado,
+      password: claveInvitado,
+      email_confirm: true,
+    });
+
+    if (altaInvitado.error || !altaInvitado.data.user) {
+      anotar(
+        "usuario temporal SIN rol admin, creado para la prueba de Storage",
+        false,
+        altaInvitado.error?.message ?? "sin usuario",
+      );
+    } else {
+      const invitadoId = altaInvitado.data.user.id;
+      anotar("usuario temporal SIN rol admin, creado para la prueba de Storage", true, `id ${invitadoId.slice(0, 8)}…`);
+
+      const esAdminInvitado = await servicio.from("perfil_admin").select("id").eq("id", invitadoId);
+      anotar(
+        "el usuario temporal NO tiene fila en perfil_admin",
+        (esAdminInvitado.data?.length ?? 0) === 0,
+        `${esAdminInvitado.data?.length ?? 0} filas`,
+      );
+
+      // Cliente nuevo y propio para esta sesión: `clienteAnon()` crea una
+      // instancia fresca cada vez, así que iniciar sesión aquí no toca el
+      // cliente `anon` que usaron las secciones 1 a 4.
+      const sesionInvitado = clienteAnon();
+      const ingreso = await sesionInvitado.auth.signInWithPassword({
+        email: correoInvitado,
+        password: claveInvitado,
+      });
+
+      if (ingreso.error || !ingreso.data.session) {
+        // El proveedor Email de Supabase Auth lleva apagado desde antes de esta
+        // sesión (docs/estado.md, paso (c) del orden de despliegue). Sin él,
+        // ninguna sesión de contraseña funciona, ni la de un administrador ni
+        // la de este usuario de prueba: no es un fallo de las políticas, es que
+        // la puerta todavía no está abierta. Se deja constancia y no se
+        // adivinan los seis casos de abajo.
+        anotar(
+          "inicio de sesión con el usuario temporal",
+          false,
+          `${ingreso.error?.message ?? "sin sesión"} — revisar si el proveedor Email de Supabase Auth sigue apagado`,
+        );
+      } else {
+        anotar("inicio de sesión con el usuario temporal", true, "sesión obtenida");
+
+        const PNG_1X1 = Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+          "base64",
+        );
+        const PDF_MINIMO = Buffer.from("%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n", "utf8");
+
+        const buckets = [
+          { id: "documentos-matricula", archivo: PDF_MINIMO, tipo: "application/pdf", ext: "pdf" },
+          { id: "productos", archivo: PNG_1X1, tipo: "image/png", ext: "png" },
+          { id: "competencias", archivo: PNG_1X1, tipo: "image/png", ext: "png" },
+          { id: "sitio", archivo: PNG_1X1, tipo: "image/png", ext: "png" },
+        ] as const;
+
+        for (const bucket of buckets) {
+          const sello = Date.now();
+          const rutaSemilla = `${bucket.id}/prueba-storage-semilla-${sello}.${bucket.ext}`;
+          const rutaNueva = `${bucket.id}/prueba-storage-subida-${sello}.${bucket.ext}`;
+
+          // Semilla con la service role: el intento de "reemplazar" y de
+          // "borrar" necesita un objeto real que ya exista, o RLS no tendría
+          // nada que negar y la prueba no distinguiría "denegado" de "no había
+          // nada que tocar".
+          const semilla = await servicio.storage
+            .from(bucket.id)
+            .upload(rutaSemilla, bucket.archivo, { contentType: bucket.tipo, upsert: true });
+
+          if (semilla.error) {
+            anotar(`${bucket.id}: se pudo sembrar el objeto de prueba (service role)`, false, semilla.error.message);
+            continue;
+          }
+
+          // --- Subir ---------------------------------------------------------
+          const subida = await sesionInvitado.storage
+            .from(bucket.id)
+            .upload(rutaNueva, bucket.archivo, { contentType: bucket.tipo });
+          anotar(
+            `${bucket.id}: SUBIR rechazado sin rol admin`,
+            subida.error !== null,
+            subida.error ? `rechazado: ${subida.error.message}` : "SE SUBIÓ: la política de INSERT no exige es_admin()",
+          );
+          // Ground truth: si de verdad se rechazó, el objeto no debe existir.
+          const quedoSubido = await servicio.storage.from(bucket.id).download(rutaNueva);
+          anotar(
+            `${bucket.id}: el objeto de la subida rechazada NO existe`,
+            quedoSubido.error !== null,
+            quedoSubido.error ? "confirmado ausente" : "EXISTE: la subida no debería haber quedado",
+          );
+
+          // --- Reemplazar ------------------------------------------------------
+          const otroPng = Buffer.from(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+P+/HgAFhAJ/wlseKgAAAABJRU5ErkJggg==",
+            "base64",
+          );
+          const reemplazo = await sesionInvitado.storage
+            .from(bucket.id)
+            .update(rutaSemilla, bucket.id === "documentos-matricula" ? PDF_MINIMO : otroPng, { contentType: bucket.tipo });
+          anotar(
+            `${bucket.id}: REEMPLAZAR rechazado sin rol admin`,
+            reemplazo.error !== null,
+            reemplazo.error ? `rechazado: ${reemplazo.error.message}` : "SE REEMPLAZÓ: la política de UPDATE no exige es_admin()",
+          );
+          // Ground truth: el contenido semilla tiene que seguir intacto, byte a
+          // byte. Un "sin error" de storage.update() no basta como prueba: hay
+          // que comprobar que el archivo no cambió de verdad.
+          const trasReemplazo = await servicio.storage.from(bucket.id).download(rutaSemilla);
+          const bytesTrasReemplazo = trasReemplazo.data ? Buffer.from(await trasReemplazo.data.arrayBuffer()) : null;
+          anotar(
+            `${bucket.id}: el objeto semilla sigue con su contenido original`,
+            bytesTrasReemplazo !== null && bytesTrasReemplazo.equals(bucket.archivo),
+            trasReemplazo.error ? trasReemplazo.error.message : bytesTrasReemplazo?.equals(bucket.archivo) ? "sin cambios" : "CAMBIÓ",
+          );
+
+          // --- Borrar ----------------------------------------------------------
+          await sesionInvitado.storage.from(bucket.id).remove([rutaSemilla]);
+          // Ground truth, no el valor de retorno: `remove()` sobre un objeto que
+          // RLS protege puede volver sin `error` y con cero objetos borrados,
+          // igual que un DELETE de tabla sin filas afectadas. Lo único que
+          // prueba el borrado de verdad es que el archivo YA NO esté.
+          const trasBorrado = await servicio.storage.from(bucket.id).download(rutaSemilla);
+          anotar(
+            `${bucket.id}: BORRAR rechazado sin rol admin (el objeto sigue existiendo)`,
+            trasBorrado.error === null,
+            trasBorrado.error ? "YA NO EXISTE: el borrado no debería haber pasado" : "confirmado: sigue ahí",
+          );
+
+          // --- Limpieza de este bucket ------------------------------------------
+          await servicio.storage.from(bucket.id).remove([rutaSemilla, rutaNueva]);
+        }
+      }
+
+      // --- Limpieza del usuario temporal -------------------------------------
+      const bajaInvitado = await servicio.auth.admin.deleteUser(invitadoId);
+      anotar("usuario temporal SIN rol admin, eliminado", bajaInvitado.error === null, bajaInvitado.error?.message ?? "");
+
+      const buscarInvitado = await servicio.auth.admin.listUsers();
+      const sigueInvitado = (buscarInvitado.data?.users ?? []).some((u) => u.id === invitadoId);
+      anotar(
+        "su borrado confirmado por consulta",
+        !sigueInvitado,
+        sigueInvitado ? "SIGUE EXISTIENDO" : "no aparece en auth.users",
+      );
+
+      const perfilInvitado = await servicio.from("perfil_usuario").select("id").eq("id", invitadoId);
+      anotar("su perfil_usuario también desapareció", (perfilInvitado.data?.length ?? 0) === 0, `${perfilInvitado.data?.length ?? 0} filas`);
+    }
+  }
+
+  // --- 6. La bitácora registra el actor real ---------------------------------
   //
   // Esto necesita una escritura de verdad, y una escritura necesita un
   // `p_actor_id` que exista en `auth.users`: la FK de `evento_auditoria.actor_id`
@@ -129,8 +311,7 @@ async function main(): Promise<void> {
   // se lee ANTES del borrado: al eliminar la cuenta, la FK `on delete set null`
   // deja el evento con `actor_id` en NULL (migración 16), que es lo correcto y no
   // serviría como prueba.
-  const servicio = clienteServicio();
-  const correo = `verificacion-contenido-${Date.now()}@tsw-verificacion.com`;
+  const correo = `verificacion-contenido-${Date.now()}@example.com`;
   const alta = await servicio.auth.admin.createUser({
     email: correo,
     password: `Verificacion-${Date.now()}!`,
@@ -227,10 +408,10 @@ async function main(): Promise<void> {
   console.log("VERIFICACIÓN LIMPIA contra el remoto.");
   console.log("");
   console.log("Sin comprobar aquí:");
-  console.log("  · Que un usuario CON SESIÓN y sin rol de administrador no escriba. Lo de arriba");
-  console.log("    prueba que anon no escribe y que no hay política de escritura para NADIE, que");
-  console.log("    es más fuerte; intentarlo con una sesión de usuario exige autenticarse con");
-  console.log("    esa cuenta, y eso necesita permiso explícito de Samuel.");
+  console.log("  · Que un usuario CON SESIÓN y sin rol de administrador no escriba en");
+  console.log("    contenido_sitio. La sección 5 sí lo prueba con una sesión real, pero para");
+  console.log("    Storage; para la tabla solo hay la prueba estructural (cero políticas de");
+  console.log("    escritura) y la de anon, que es más fuerte en un sentido pero no la misma cosa.");
   console.log("  · Que el panel escriba de verdad: faltan la capa de lectura y la pantalla.");
 
 }

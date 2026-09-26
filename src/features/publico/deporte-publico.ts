@@ -1,8 +1,16 @@
-import { DEPORTES, type Deporte } from "@/config/contenido";
+import type { Deporte } from "@/config/contenido";
 
-/** Deporte por id, con el primero como respaldo. */
-export function deportePublicoPorId(id: string | undefined): Deporte {
-  return DEPORTES.find((d) => d.id === id) ?? DEPORTES[0]!;
+/**
+ * Deporte por id, con el primero como respaldo.
+ *
+ * Recibe la lista en vez de importar `DEPORTES` de `config/contenido.ts`:
+ * desde la migración 19 esa lista puede estar personalizada en
+ * `contenido_sitio`, y quien llama ya la obtuvo con
+ * `obtenerDeportes()` (features/sitio/queries.ts), que sabe caer al valor de
+ * fábrica si hace falta. Esta función se queda pura y no vuelve a leer nada.
+ */
+export function deportePublicoPorId(id: string | undefined, deportes: readonly Deporte[]): Deporte {
+  return deportes.find((d) => d.id === id) ?? deportes[0]!;
 }
 
 /**
@@ -30,15 +38,16 @@ export type ParametrosBusqueda = Record<string, string | string[] | undefined>;
  *
  * Un id desconocido o ausente cae al primer deporte de la lista.
  */
-export function deporteDeParametros(parametros: ParametrosBusqueda | undefined): Deporte {
+export function deporteDeParametros(
+  parametros: ParametrosBusqueda | undefined,
+  deportes: readonly Deporte[],
+): Deporte {
   const crudo = parametros?.[PARAMETRO_DEPORTE];
   const id = Array.isArray(crudo) ? crudo[0] : crudo;
-  return deportePublicoPorId(id);
+  return deportePublicoPorId(id, deportes);
 }
 
 /** Enlace a una sección pública con el deporte ya puesto. */
 export function enlaceConDeporte(ruta: string, deporteId: string): string {
   return `${ruta}?${PARAMETRO_DEPORTE}=${encodeURIComponent(deporteId)}`;
 }
-
-export { DEPORTES as DEPORTES_PUBLICO };

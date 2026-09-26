@@ -139,7 +139,7 @@ async function casoRegistro(reporte: Reporte): Promise<void> {
 
   const anon = clienteAnon();
   const { error } = await anon.auth.signUp({
-    email: `verificacion-rls-${Date.now()}@tsw-verificacion.com`,
+    email: `verificacion-rls-${Date.now()}@example.com`,
     password: `Verificacion-${Date.now()}!`,
   });
 

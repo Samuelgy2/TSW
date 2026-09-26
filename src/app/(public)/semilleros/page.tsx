@@ -14,11 +14,12 @@ import {
   Seccion,
   SeccionTitulo,
 } from "@/components/ui";
-import { SEMILLEROS } from "@/config/contenido";
 import { listarClubes } from "@/features/clubes/queries";
 import type { Club } from "@/features/clubes/types";
 import { FichaNiveles } from "@/features/niveles/components/FichaNiveles";
 import { listarNiveles } from "@/features/niveles/queries";
+import { obtenerSemilleros } from "@/features/sitio/queries";
+import type { EntradaSemilleros } from "@/features/sitio/schemas";
 import { SelectorClubPublico } from "@/features/publico/components/SelectorClubPublico";
 import { clubDeParametros, clubPorDefecto, type ParametrosBusqueda } from "@/features/publico/club-publico";
 
@@ -73,7 +74,11 @@ type Props = { searchParams: Promise<ParametrosBusqueda> };
  * sale del dato. El día que la corporación sume otro programa, funciona solo.
  */
 export default async function PaginaSemilleros({ searchParams }: Props) {
-  const [clubes, parametros] = await Promise.all([listarClubes(), searchParams]);
+  const [clubes, semilleros, parametros] = await Promise.all([
+    listarClubes(),
+    obtenerSemilleros(),
+    searchParams,
+  ]);
   const seleccion = clubDeParametros(clubes, parametros);
 
   if (clubes.length === 0) return <SinClubes />;
@@ -129,14 +134,18 @@ export default async function PaginaSemilleros({ searchParams }: Props) {
         </div>
       </Seccion>
 
-      {esPrograma ? <BloquePrograma club={club} /> : <BloqueNiveles niveles={niveles} />}
+      {esPrograma ? (
+        <BloquePrograma club={club} />
+      ) : (
+        <BloqueNiveles niveles={niveles} cifras={semilleros.cifras} />
+      )}
 
       <Seccion tono="claro" tituloId="titulo-preguntas">
         <Aparece>
           <SeccionTitulo id="titulo-preguntas">Preguntas frecuentes</SeccionTitulo>
         </Aparece>
         <Aparece indice={1} className="mt-8 max-w-3xl">
-          <Acordeon items={[...SEMILLEROS.preguntas]} />
+          <Acordeon items={[...semilleros.preguntas]} />
         </Aparece>
       </Seccion>
 
@@ -164,7 +173,13 @@ export default async function PaginaSemilleros({ searchParams }: Props) {
 }
 
 /** Los niveles de un club, con las cifras de la metodología encima. */
-function BloqueNiveles({ niveles }: { niveles: Awaited<ReturnType<typeof listarNiveles>> }) {
+function BloqueNiveles({
+  niveles,
+  cifras,
+}: {
+  niveles: Awaited<ReturnType<typeof listarNiveles>>;
+  cifras: EntradaSemilleros["cifras"];
+}) {
   return (
     <>
       <Seccion tono="oscuro" espaciado="compacto" tituloId="titulo-metodologia">
@@ -172,7 +187,7 @@ function BloqueNiveles({ niveles }: { niveles: Awaited<ReturnType<typeof listarN
           La metodología en cifras
         </h2>
         <ul className="grid gap-4 md:grid-cols-3">
-          {SEMILLEROS.cifras.map((cifra, i) => (
+          {cifras.map((cifra, i) => (
             <Aparece key={cifra.id} indice={i} como="li">
               <Indicador
                 variante="cifra"

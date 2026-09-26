@@ -15,6 +15,7 @@ import { SITIO } from "@/config/sitio";
 import { listarCompetenciasConResultados } from "@/features/competencias/queries";
 import { UltimosResultados } from "@/features/competencias/components/UltimosResultados";
 import { listarDocumentosPublicados } from "@/features/matriculas/queries";
+import { obtenerDeportes, obtenerPortada } from "@/features/sitio/queries";
 
 export const metadata: Metadata = {
   description: SITIO.descripcion,
@@ -30,21 +31,23 @@ export const metadata: Metadata = {
  * /semilleros y /tienda, a un clic desde las tarjetas de deporte y el menú.
  */
 export default async function PaginaInicio() {
-  const [competencias, documentos] = await Promise.all([
+  const [competencias, documentos, deportes, portada] = await Promise.all([
     listarCompetenciasConResultados(),
     listarDocumentosPublicados(),
+    obtenerDeportes(),
+    obtenerPortada(),
   ]);
 
   return (
     <>
-      <HeroPortal />
-      <CifrasPortal />
-      <PilaresPortal />
-      <DeportesPortal />
+      <HeroPortal deportes={deportes} portada={portada} />
+      <CifrasPortal portada={portada} />
+      <PilaresPortal portada={portada} />
+      <DeportesPortal deportes={deportes} portada={portada} />
       <UltimosResultados competencias={competencias} />
-      <CitaPortal />
+      <CitaPortal portada={portada} />
       <DocumentosPortal documentos={documentos} />
-      <SedePortal />
+      <SedePortal portada={portada} />
       <BloqueCTA
         tituloId="titulo-cta-portada"
         titulo="¿Tu hijo quiere entrenar con la corporación?"

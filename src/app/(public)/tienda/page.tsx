@@ -4,10 +4,10 @@ import { Aparece } from "@/lib/animaciones";
 import { BloqueCTA, BotonWhatsApp, Card, CardCuerpo, HeroPagina, Seccion, SeccionTitulo } from "@/components/ui";
 import { listarProductos } from "@/features/tienda/queries";
 import { CatalogoProductos } from "@/features/tienda/components/CatalogoProductos";
-import { TIENDA } from "@/config/contenido";
 import { TIENDA_QUE_CONFIRMA } from "@/config/sitio";
+import { obtenerDeportes, obtenerTienda } from "@/features/sitio/queries";
 import { SelectorDeportePublico } from "@/features/publico/components/SelectorDeportePublico";
-import { DEPORTES_PUBLICO, deporteDeParametros, type ParametrosBusqueda } from "@/features/publico/deporte-publico";
+import { deporteDeParametros, type ParametrosBusqueda } from "@/features/publico/deporte-publico";
 
 const TITULO = "Tienda";
 const DESCRIPCION =
@@ -30,8 +30,13 @@ type Props = { searchParams: Promise<ParametrosBusqueda> };
  * (deporte nulo) aparece bajo todos.
  */
 export default async function PaginaTienda({ searchParams }: Props) {
-  const [productos, parametros] = await Promise.all([listarProductos(), searchParams]);
-  const deporte = deporteDeParametros(parametros);
+  const [productos, deportes, tienda, parametros] = await Promise.all([
+    listarProductos(),
+    obtenerDeportes(),
+    obtenerTienda(),
+    searchParams,
+  ]);
+  const deporte = deporteDeParametros(parametros, deportes);
 
   return (
     <>
@@ -39,7 +44,7 @@ export default async function PaginaTienda({ searchParams }: Props) {
         antetitulo="Dotación oficial"
         titulo={`Tienda · ${deporte.nombre}`}
         bajada={`Uniformes, protección y merchandising de la corporación. Elige producto y talla, y envía el pedido por WhatsApp: ${TIENDA_QUE_CONFIRMA}.`}
-        lateral={<SelectorDeportePublico deportes={DEPORTES_PUBLICO} valor={deporte.id} />}
+        lateral={<SelectorDeportePublico deportes={deportes} valor={deporte.id} />}
       />
 
       <Seccion espaciado="compacto" tituloId="titulo-beneficios" className="border-b border-gris-borde">
@@ -47,7 +52,7 @@ export default async function PaginaTienda({ searchParams }: Props) {
           Cómo funciona la tienda
         </h2>
         <ul className="grid gap-4 md:grid-cols-3">
-          {TIENDA.beneficios.map((beneficio, i) => (
+          {tienda.beneficios.map((beneficio, i) => (
             <Aparece key={beneficio.id} indice={i} como="li">
               <Card className="h-full">
                 <CardCuerpo className="flex items-start gap-4 p-4">

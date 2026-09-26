@@ -52,6 +52,41 @@ Estas nacieron de fallos reales en esta sesión. No las relajes:
   migraciones y las llamadas a `ejecutarRpc`: un parámetro sin `default`, o
   con `default` pero exigido en el cuerpo, tiene que aparecer en la llamada.
 
+### Nunca `python -c`, `node -e` ni heredocs con comandos dentro
+
+Regla nacida de tres fallos reales en esta sesión, los tres del mismo origen:
+un comando de una sola línea que parecía texto y el shell lo interpretó como
+otra cosa.
+
+- Un `python -c "…"` con una comilla invertida dentro de una cadena de bash
+  hizo que bash la leyera como sustitución de comandos y **ejecutara
+  `npm run db:types:remote` sin que se pidiera**. Salió bien, pero fue
+  accidental y no se supo hasta después.
+- Una regex escrita dentro de un `python -c` con `'\b'` se coló como el
+  carácter de retroceso literal (0x08) en vez de la barra invertida + b: un
+  chequeo de políticas pasó **en verde con cero casos**, la peor forma de
+  pasar.
+- `python - <<'FIN'` se queda colgado para siempre en este Git Bash: el
+  proceso espera un stdin que no llega y la tarea pasa a segundo plano sin
+  avisar. Dos de esos procesos vivos parecían "un bucle iterando en el
+  proyecto".
+
+La regla: **ningún comando lleva lógica embebida en la línea de invocación.**
+Cualquier script, sea de una línea o de cien, va primero a un archivo dentro
+de `scripts/tmp/` (ignorado en git, con `.gitkeep` para que la carpeta exista)
+y se ejecuta desde ahí con `node scripts/tmp/loquesea.mjs` o
+`python scripts/tmp/loquesea.py`. Un archivo se puede leer antes de correrlo,
+un heredoc no se relee tan fácil, y ninguno de los tres fallos de arriba
+sobrevive a pasar por un archivo real.
+
+**`.claude/settings.json` (en el repo) bloquea, además, los comandos que
+Samuel corre desde su terminal y nadie más**: `supabase db push`,
+`supabase db reset`, `supabase migration repair`, `npm run db:push*`,
+`git push --force*`, `git reset --hard*`, `rm -rf*`. Esto es un cinturón
+aparte de la regla de arriba, no un sustituto: la regla de arriba evita el
+comando accidental por sustitución de shell; el `deny` evita que un comando
+bien formado pero destructivo se ejecute sin que Samuel lo haya pedido.
+
 ### Nunca te autentiques como un usuario real
 
 Regla nacida de un fallo real: para verificar el panel se abrió sesión con la
@@ -66,9 +101,11 @@ persona real usando la llave que salta RLS. No se repite.
 - Solo con **permiso explícito de Samuel en ese momento**. Un permiso dado en
   una tarea anterior no vale para la siguiente.
 - Para verificar hace falta una cuenta propia: un **usuario temporal**
-  `verificacion-<asunto>-<timestamp>@tsw-verificacion.com`, creado para la
-  prueba y **borrado al terminar** (el usuario de Auth y su perfil), con el
-  borrado confirmado por consulta en el reporte.
+  `verificacion-<asunto>-<timestamp>@example.com` (dominio reservado para
+  pruebas, RFC 2606; antes se usaba `@tsw-verificacion.com`, un dominio que
+  nadie registró y que en teoría alguien podría), creado para la prueba y
+  **borrado al terminar** (el usuario de Auth y su perfil), con el borrado
+  confirmado por consulta en el reporte.
 - Leer con la service role (listar usuarios, consultar perfiles, mirar
   `updated_at`) **no** es autenticarse y sigue permitido. La línea está en
   abrir sesión en nombre de otra persona.

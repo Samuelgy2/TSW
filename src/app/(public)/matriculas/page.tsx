@@ -14,13 +14,14 @@ import {
   Seccion,
   SeccionTitulo,
 } from "@/components/ui";
-import { MATRICULAS } from "@/config/contenido";
 import { CONTACTO, SEDES_EN_LINEA, UBICACION } from "@/config/sitio";
 import { ListaDocumentos } from "@/features/matriculas/components/ListaDocumentos";
 import { PasosMatricula } from "@/features/matriculas/components/PasosMatricula";
 import { listarDocumentosPublicados } from "@/features/matriculas/queries";
+import { obtenerDeportes, obtenerMatriculas } from "@/features/sitio/queries";
+import { interpolar } from "@/features/sitio/textos";
 import { SelectorDeportePublico } from "@/features/publico/components/SelectorDeportePublico";
-import { DEPORTES_PUBLICO, deporteDeParametros, type ParametrosBusqueda } from "@/features/publico/deporte-publico";
+import { deporteDeParametros, type ParametrosBusqueda } from "@/features/publico/deporte-publico";
 
 const TITULO = "Matrículas";
 const DESCRIPCION =
@@ -40,18 +41,23 @@ type Props = { searchParams: Promise<ParametrosBusqueda> };
  * fijo (config/contenido.ts) hasta que el esquema tenga deporte y periodo.
  */
 export default async function PaginaMatriculas({ searchParams }: Props) {
-  const [documentos, parametros] = await Promise.all([listarDocumentosPublicados(), searchParams]);
-  const deporte = deporteDeParametros(parametros);
-  const { cupos, cierre } = MATRICULAS;
+  const [documentos, deportes, matriculas, parametros] = await Promise.all([
+    listarDocumentosPublicados(),
+    obtenerDeportes(),
+    obtenerMatriculas(),
+    searchParams,
+  ]);
+  const deporte = deporteDeParametros(parametros, deportes);
+  const { cupos, cierre } = matriculas;
 
   return (
     <>
       <HeroPagina
         tono="oscuro"
-        antetitulo={MATRICULAS.antetitulo}
+        antetitulo={matriculas.antetitulo}
         titulo={`Matrículas · ${deporte.nombre}`}
         bajada="Descarga los formatos, diligéncialos y entrégalos en la sede. La radicación es presencial y los cupos son limitados por categoría."
-        lateral={<SelectorDeportePublico deportes={DEPORTES_PUBLICO} valor={deporte.id} fondo="oscuro" />}
+        lateral={<SelectorDeportePublico deportes={deportes} valor={deporte.id} fondo="oscuro" />}
       />
 
       <Seccion tono="oscuro" espaciado="compacto" className="border-t border-blanco/10" tituloId="titulo-cupos">
@@ -119,18 +125,21 @@ export default async function PaginaMatriculas({ searchParams }: Props) {
           </SeccionTitulo>
         </Aparece>
         <Aparece indice={1} className="mt-8">
-          <PasosMatricula />
+          <PasosMatricula matriculas={matriculas} />
         </Aparece>
       </Seccion>
 
       <Seccion tono="claro" tituloId="titulo-categorias">
         <Aparece>
-          <SeccionTitulo id="titulo-categorias" bajada={MATRICULAS.categoriasBajada(deporte.nombre)}>
+          <SeccionTitulo
+            id="titulo-categorias"
+            bajada={interpolar(matriculas.categoriasBajada, { deporte: deporte.nombre })}
+          >
             Categorías de vinculación
           </SeccionTitulo>
         </Aparece>
         <ul className="mt-8 grid gap-5 lg:grid-cols-2">
-          {MATRICULAS.categorias.map((categoria, i) => (
+          {matriculas.categorias.map((categoria, i) => (
             <Aparece key={categoria.id} indice={i + 1} como="li">
               <Card className="h-full">
                 <CardCuerpo className="flex h-full flex-col">
@@ -151,7 +160,7 @@ export default async function PaginaMatriculas({ searchParams }: Props) {
 
       <Seccion tituloId="titulo-documentos">
         <Aparece>
-          <SeccionTitulo id="titulo-documentos" bajada={MATRICULAS.documentosBajada}>
+          <SeccionTitulo id="titulo-documentos" bajada={matriculas.documentosBajada}>
             Documentos para descargar
           </SeccionTitulo>
         </Aparece>

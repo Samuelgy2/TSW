@@ -7,6 +7,7 @@
 /.next/
 /.next-verificar/
 /.next-verificar-dev/
+/.next-prueba-*/
 /out/
 /build
 next-env.d.ts.timestamp
@@ -31,6 +32,10 @@ Thumbs.db
 # logs
 npm-debug.log*
 yarn-error.log*
+
+# scripts de un solo uso: nunca -c/-e/heredocs sueltos, siempre a un archivo aquí
+/scripts/tmp/*
+!/scripts/tmp/.gitkeep
 
 # vercel
 .vercel

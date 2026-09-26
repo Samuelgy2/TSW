@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(supabase db push*)",
+      "Bash(supabase db reset*)",
+      "Bash(supabase migration repair*)",
+      "Bash(npm run db:push*)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)",
+      "Bash(rm -rf*)"
+    ]
+  }
+}

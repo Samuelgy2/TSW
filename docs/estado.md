@@ -1,16 +1,18 @@
 # Punto de retorno
 
-Dónde está el proyecto al cerrar la sesión del **25-09-2026**. Lo que explica el
+Dónde está el proyecto al cerrar la sesión del **26-09-2026**. Lo que explica el
 porqué de cada decisión está en [CLAUDE.md](../CLAUDE.md); aquí solo el estado.
 
 ## Rama
 
-`feat/login-otp-landing`, último commit **`425bd02`**, empujada a `origin`.
-**29 commits por delante de `main`**, que sigue sin tocar.
+`feat/login-otp-landing`, empujada a `origin`. **36 commits por delante de
+`main`**, que sigue sin tocar. El último es el que cierra la Parte G
+(`feat(sitio): capa de lectura y /admin/sitio`).
 
-Sale de `entrega/v1` y trae, en orden: login por código, migraciones 15 a 18,
+Sale de `entrega/v1` y trae, en orden: login por código, migraciones 15 a 20,
 la paleta nueva, el menú de clubes, `/semilleros` por club, el contenido real
-del documento de la cliente, las tres páginas legales y los chequeos mecánicos.
+del documento de la cliente, las tres páginas legales, los chequeos mecánicos y
+el contenido del sitio editable desde el panel.
 
 ## Hecho
 
@@ -86,9 +88,14 @@ el actor anonimizado tras borrar la cuenta (migración 16).
 `verificar:parametros` en 67 casos, la capa de lectura y la pantalla ya se pueden
 escribir.
 
-Probar que un usuario **con sesión** y sin rol de administrador no escribe exige
-autenticarse con esa cuenta y necesita permiso explícito de Samuel. Lo verificado
-es más fuerte en un sentido: no hay política de escritura para NADIE.
+**Hecho el 26-09-2026, con permiso explícito de Samuel para esa prueba**: un
+usuario temporal **con sesión** y sin rol de administrador
+(`verificacion-storage-<timestamp>@example.com`) intentó subir, reemplazar y
+borrar en `documentos-matricula`, `productos`, `competencias` y `sitio`. Las doce
+operaciones fueron rechazadas por RLS, y el resultado se comprobó leyendo el
+bucket con la service role (el objeto nuevo no existe, el sembrado conserva sus
+bytes, el borrado sigue ahí). La cuenta se borró y el borrado se confirmó por
+consulta. Es la sección 5 de `verificar:contenido-remoto`, que queda en 48 casos.
 
 ## Para fusionar a `main`
 
@@ -110,7 +117,7 @@ es más fuerte en un sentido: no hay política de escritura para NADIE.
 **Míos**
 
 - **URL del preview de Vercel**: la rama está empujada, pero no hay CLI ni `gh` aquí. Hay que leerla del panel de Vercel o del check de GitHub. Ojo: el remoto `Samuelgy2/TSW` redirige a `tswbmxclub-support/TSW`; si el proyecto de Vercel está conectado a la cuenta vieja, puede no disparar.
-- **Proveedor Email apagado en Supabase Auth**: es lo que impide entrar al panel en producción. Se enciende en Authentication → Providers → Email, con registro y confirmación apagados, y registrando `${NEXT_PUBLIC_SITE_URL}/admin/auth/callback` en Redirect URLs.
+- **Proveedor Email en Supabase Auth: parece encendido, falta confirmarlo.** El 26-09-2026 `signInWithPassword` funcionó con el usuario temporal de la prueba de Storage, cosa imposible con el proveedor apagado. Lo que no está comprobado: que "Allow new users to sign up" siga apagado y que `${NEXT_PUBLIC_SITE_URL}/admin/auth/callback` esté en Redirect URLs. Se mira en el panel de Supabase.
 - **Datos de prueba**: los borra Samuel desde el panel, no por SQL. Son las competencias "Competencia publicada 1 y 2" con "Rider 1" y "Rider 2", los tres PDF de prueba de Matrículas y los productos con precios de $10 y $20.
 
 ## Trampas del entorno
@@ -120,28 +127,67 @@ es más fuerte en un sentido: no hay política de escritura para NADIE.
 - **Build intermitente: sin reproducir.** Falló una vez con `Export encountered an error on /admin`; 5 corridas limpias después. No está arreglado, está sin reproducir. Detalle e hipótesis —dos procesos escribiendo el mismo `.next`, que es justo lo que el punto anterior evita— en [build-intermitente.log](build-intermitente.log).
 - Añadir un archivo a un barrel con el dev encendido rompe el bundle con `__webpack_modules__[moduleId] is not a function`. No es import circular: reiniciar.
 
-## Parte G — en curso
+## Parte G — bloque de lectura y `/admin/sitio` cerrado
 
-**Hecho: solo el SQL.** Migraciones 19 y 20 escritas y validadas, **sin aplicar a
-remoto** (ver el orden de despliegue).
+Migraciones 19 y 20 **aplicadas a remoto** (20 migraciones, confirmado por
+`list_migrations` y por `npm run verificar:contenido-remoto`, 48 casos con un
+usuario temporal sin rol admin fallando las cuatro operaciones de Storage en los
+cuatro buckets — ver más arriba).
 
 - **19** `contenido_sitio`: una fila por sección en jsonb, clave con lista
   cerrada, RLS con lectura pública y **cero políticas de escritura**,
   `guardar_contenido` y `restablecer_contenido`, y el bucket `sitio` (PNG, JPEG y
   WebP; sin SVG ni AVIF) con escritura que exige `es_admin()`.
 - **20** endurece las siete políticas de escritura de Storage de la migración 09
-  para que exijan `es_admin()`. Eran `to authenticated` a secas, de cuando eso era
-  sinónimo de administrador; desde la 13 una sesión de deportista también lo es.
-  Agujero latente, no explotable hoy —el módulo de usuario está apagado y el panel
-  sube con service role—, y por eso no lo cazó ninguna prueba.
-- `npm run verificar:contenido`: 55 casos. `verificar:politicas`: 27, con las doce
-  políticas de Storage cruzadas por las dos reglas.
+  para que exijan `es_admin()`.
 
-**Falta:** la capa de lectura (con `safeParse` por clave y caída al valor de
-`contenido.ts`, ya vigilada por `verificar:contenido`) y la pantalla
-`/admin/sitio`. No se empieza hasta que Samuel confirme el `db push`: la regla del
-proyecto es no escribir código contra RPC que no están en la base.
+**Capa de lectura** (`src/features/sitio/queries.ts`, la ruta que
+`verificar:contenido` vigila): `obtenerDeportes/Portada/Matriculas/Semilleros/
+Tienda()`, cada una con `safeParse` contra el esquema Zod de
+`features/sitio/schemas.ts` y caída al valor de `config/contenido.ts` si la fila
+no existe, no valida o la consulta falla. Las cinco páginas públicas que antes
+importaban las constantes fijas (`/`, `/matriculas`, `/semilleros`, `/tienda`,
+`/competencias`, más `HeroPortal`, `SeccionesPortal`, `PasosMatricula`,
+`deporte-publico.ts`) pasan a recibir el contenido como prop, resuelto una vez
+por página. `datos-de-muestra.ts` (el módulo `/cuenta`, apagado) se dejó igual a
+propósito: es su propio scaffolding de borrar-al-conectar-la-base.
+
+`MATRICULAS.categoriasBajada` dejó de ser una función —no serializable en
+jsonb— y pasó a una plantilla `"…en {deporte}."` que interpola
+`features/sitio/textos.ts`.
+
+**`/admin/sitio`**: cinco pestañas (una por sección), con quién editó cada una
+por última vez y cuándo (de la bitácora, vía
+`features/admin/queries-contenido.ts`), reemplazo total al guardar (mismo
+esquema Zod en cliente y servidor), restablecer con modal de confirmación, y
+subida de imágenes al bucket `sitio` con tipo y tamaño comprobados antes de
+subir (el primitivo `Archivo`, que ya lo hacía) y otra vez en el servidor por
+firma de bytes.
+
+`npm run verificar:completo` limpio con todo esto dentro: build, los 7 chequeos
+(`verificar:parametros` ahora en 71 casos, cubriendo `guardar_contenido` y
+`restablecer_contenido`), y `verificar:foco`.
 
 `TIENDA_MUESTRA_PRECIOS` y `LEGALES_APROBADAS` **no** pasaron a la configuración
 editable, a propósito: el primero se enciende una vez en la vida del proyecto, y
 el segundo es una puerta de cumplimiento legal que debe exigir un commit.
+
+### Barreras nuevas de esta sesión
+
+- **`.claude/settings.json`** (checked in): `permissions.deny` bloquea
+  `supabase db push/reset/migration repair`, `npm run db:push*`,
+  `git push --force*`, `git reset --hard*`, `rm -rf*`. Esos los corre Samuel.
+- **Regla en CLAUDE.md**: nunca `python -c`, `node -e` ni heredocs con lógica
+  dentro; todo script de un solo uso va primero a un archivo en `scripts/tmp/`
+  (gitignorado) y se ejecuta desde ahí. Nació de tres fallos reales de esta
+  sesión (sustitución de comandos por una comilla invertida sin querer, un
+  `\b` de regex colado como carácter de retroceso, un `python -` con heredoc
+  colgado para siempre).
+- **Dominio de los usuarios temporales de verificación**: `@example.com`
+  (RFC 2606) en vez de `@tsw-verificacion.com`, que nadie registró. Cambiado en
+  la regla de CLAUDE.md y en los scripts que CREAN cuentas nuevas
+  (`verificar-auditoria.ts`, `verificar-contenido-remoto.ts`, `verificar-rls.ts`).
+  **No** se tocó la migración 13 (ya aplicada, cita el dominio viejo en el SQL
+  de una siembra histórica) ni el chequeo que valida ese SQL contra el archivo
+  real (`verificar-perfiles.mjs`): cambiar ahí habría hecho que el chequeo
+  fallara contra una migración que sigue siendo correcta.

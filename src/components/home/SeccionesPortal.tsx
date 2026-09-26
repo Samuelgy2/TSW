@@ -2,26 +2,29 @@ import Image from "next/image";
 
 import { Aparece } from "@/lib/animaciones";
 import { Card, CardCuerpo, CuentaAscendente, Indicador, ItemDescarga, Seccion, SeccionTitulo, TarjetaDeporte } from "@/components/ui";
-import { DEPORTES, PORTADA } from "@/config/contenido";
 import { BUCKET_DOCUMENTOS, type DocumentoConVersion } from "@/features/matriculas/types";
+import { resolverImagenSitio } from "@/features/sitio/imagenes";
+import type { EntradaDeportes, EntradaPortada } from "@/features/sitio/schemas";
 import { urlPublicaStorage } from "@/lib/supabase/storage";
 import { cn, formatearFecha } from "@/lib/utils";
 
 /**
  * Secciones de la portada de la corporación, en el orden del rediseño. Todas
  * son Server Components; lo único con estado es la cuenta ascendente de las
- * cifras. Todo el texto fijo sale de config/contenido.ts.
+ * cifras. `deportes` y `portada` llegan como props desde la página: contenido
+ * editable en /admin/sitio (migración 19), con config/contenido.ts como
+ * respaldo.
  */
 
 /** Fila de cuatro cifras sobre azul profundo, con cuenta ascendente cuando hay dato. */
-export function CifrasPortal() {
+export function CifrasPortal({ portada }: { portada: EntradaPortada }) {
   return (
     <Seccion tono="oscuro" tituloId="titulo-cifras" espaciado="compacto" className="border-t border-blanco/10">
       <h2 id="titulo-cifras" className="sr-only">
         Cifras de la corporación
       </h2>
       <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {PORTADA.cifras.map((cifra, i) => (
+        {portada.cifras.map((cifra, i) => (
           <Aparece key={cifra.etiqueta} indice={i} como="li">
             <Indicador
               variante="cifra"
@@ -37,7 +40,7 @@ export function CifrasPortal() {
                   </>
                 )
               }
-              detalle={cifra.valor === null ? PORTADA.cifraPendiente : cifra.detalle}
+              detalle={cifra.valor === null ? portada.cifraPendiente : cifra.detalle}
               className="h-full"
             />
           </Aparece>
@@ -48,16 +51,16 @@ export function CifrasPortal() {
 }
 
 /** Tres pilares institucionales con ícono, título, texto y remate. */
-export function PilaresPortal() {
+export function PilaresPortal({ portada }: { portada: EntradaPortada }) {
   return (
     <Seccion tono="claro" tituloId="titulo-pilares">
       <Aparece>
-        <SeccionTitulo id="titulo-pilares" bajada={PORTADA.pilaresBajada}>
+        <SeccionTitulo id="titulo-pilares" bajada={portada.pilaresBajada}>
           Nuestros pilares
         </SeccionTitulo>
       </Aparece>
       <ul className="mt-8 grid gap-5 md:grid-cols-3">
-        {PORTADA.pilares.map((pilar, i) => (
+        {portada.pilares.map((pilar, i) => (
           <Aparece key={pilar.id} indice={i + 1} como="li">
             <Card className="h-full">
               <CardCuerpo className="flex h-full flex-col">
@@ -77,26 +80,26 @@ export function PilaresPortal() {
 }
 
 /** Una tarjeta por deporte de la corporación. */
-export function DeportesPortal() {
+export function DeportesPortal({ deportes, portada }: { deportes: EntradaDeportes; portada: EntradaPortada }) {
   // Con dos deportes, dos columnas: una cuadrícula de tres con un hueco se ve rota.
-  const columnas = DEPORTES.length >= 3 ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-2";
+  const columnas = deportes.length >= 3 ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-2";
 
   return (
     <Seccion tituloId="titulo-deportes">
       <Aparece>
-        <SeccionTitulo id="titulo-deportes" bajada={PORTADA.deportesBajada}>
+        <SeccionTitulo id="titulo-deportes" bajada={portada.deportesBajada}>
           Nuestros deportes
         </SeccionTitulo>
       </Aparece>
       <ul className={cn("mt-8 grid gap-5", columnas)}>
-        {DEPORTES.map((deporte, i) => (
+        {deportes.map((deporte, i) => (
           <Aparece key={deporte.id} indice={i + 1} como="li">
             <TarjetaDeporte
               nombre={deporte.nombre}
               categoria={deporte.categoria}
               descripcion={deporte.descripcion}
               puntos={deporte.puntos}
-              imagen={deporte.imagen}
+              imagen={resolverImagenSitio(deporte.imagen)}
               href={`/semilleros?deporte=${deporte.id}`}
               etiquetaEnlace="Ver semilleros"
               pie={deporte.pie}
@@ -110,7 +113,7 @@ export function DeportesPortal() {
 }
 
 /** Cita institucional: una tarjeta ancha con autor y cargo como placeholders. */
-export function CitaPortal() {
+export function CitaPortal({ portada }: { portada: EntradaPortada }) {
   return (
     <Seccion tono="oscuro" espaciado="compacto">
       <Aparece>
@@ -119,11 +122,11 @@ export function CitaPortal() {
             “
           </span>
           <blockquote className="mt-3 flex-1 lg:mt-0">
-            <p className="text-lg italic text-blanco/90 sm:text-xl">{PORTADA.cita.texto}</p>
+            <p className="text-lg italic text-blanco/90 sm:text-xl">{portada.cita.texto}</p>
           </blockquote>
           <figcaption className="mt-4 text-sm lg:mt-0 lg:shrink-0 lg:text-right">
-            <span className="block font-semibold text-blanco">{PORTADA.cita.autor}</span>
-            <span className="block text-blanco/70">{PORTADA.cita.cargo}</span>
+            <span className="block font-semibold text-blanco">{portada.cita.autor}</span>
+            <span className="block text-blanco/70">{portada.cita.cargo}</span>
           </figcaption>
         </figure>
       </Aparece>
@@ -175,11 +178,11 @@ export function DocumentosPortal({ documentos }: { documentos: DocumentoConVersi
 }
 
 /** Sede y canales de atención: imagen en lugar del mapa y lista de canales. */
-export function SedePortal() {
+export function SedePortal({ portada }: { portada: EntradaPortada }) {
   return (
     <Seccion tono="claro" tituloId="titulo-sede">
       <Aparece>
-        <SeccionTitulo id="titulo-sede" bajada={PORTADA.sedeBajada}>
+        <SeccionTitulo id="titulo-sede" bajada={portada.sedeBajada}>
           Sede y atención
         </SeccionTitulo>
       </Aparece>
@@ -188,16 +191,16 @@ export function SedePortal() {
           <Card className="h-full overflow-hidden">
             <div className="relative aspect-[16/9] bg-gris-frio">
               <Image
-                src={PORTADA.sede.imagen}
-                alt={PORTADA.sede.imagenAlt}
+                src={resolverImagenSitio(portada.sede.imagen) ?? "/imagenes/sede.jpg"}
+                alt={portada.sede.imagenAlt}
                 fill
                 sizes="(min-width: 1024px) 60vw, 100vw"
                 className="object-cover"
               />
             </div>
             <CardCuerpo>
-              <h3 className="text-xl leading-tight">{PORTADA.sede.nombre}</h3>
-              <p className="mt-2 text-texto-sec">{PORTADA.sede.descripcion}</p>
+              <h3 className="text-xl leading-tight">{portada.sede.nombre}</h3>
+              <p className="mt-2 text-texto-sec">{portada.sede.descripcion}</p>
             </CardCuerpo>
           </Card>
         </Aparece>
@@ -206,7 +209,7 @@ export function SedePortal() {
             <CardCuerpo>
               <h3 className="text-xl leading-tight">Canales de atención</h3>
               <dl className="mt-4 flex flex-col divide-y divide-gris-borde">
-                {PORTADA.sede.canales.map((canal) => (
+                {portada.sede.canales.map((canal) => (
                   <div key={canal.id} className="py-3">
                     <dt className="text-xs font-bold uppercase tracking-wide text-texto-sec">{canal.titulo}</dt>
                     <dd className="mt-1 text-azul-profundo">{canal.texto}</dd>

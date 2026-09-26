@@ -149,7 +149,13 @@ export const MATRICULAS = {
     fecha: "[FECHA]",
     detalle: "[Hasta cuándo se reciben carpetas sin recargo.]",
   },
-  categoriasBajada: (deporte: string) => `[Cómo se organiza la vinculación en ${deporte}.]`,
+  /**
+   * Plantilla con el marcador `{deporte}`, no una función: la sección entera
+   * viaja como jsonb hacia `contenido_sitio` (migración 19), y una función no
+   * es serializable. `interpolarDeporte()` (features/sitio/textos.ts) hace el
+   * reemplazo en el punto de uso.
+   */
+  categoriasBajada: "[Cómo se organiza la vinculación en {deporte}.]",
   categorias: [
     {
       id: "semilleros",

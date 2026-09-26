@@ -53,7 +53,7 @@ async function main(): Promise<void> {
   console.log("Verificación de la bitácora de auditoría (service role)\n");
 
   // --- Usuario temporal que hará de actor ---------------------------------
-  const correo = `verificacion-auditoria-${Date.now()}@tsw-verificacion.com`;
+  const correo = `verificacion-auditoria-${Date.now()}@example.com`;
   const { data: creado, error: errorUsuario } = await supabase.auth.admin.createUser({
     email: correo,
     password: `Verificacion-${Date.now()}!`,

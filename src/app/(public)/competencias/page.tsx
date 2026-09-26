@@ -10,8 +10,9 @@ import {
 import { HistorialCompetencias } from "@/features/competencias/components/HistorialCompetencias";
 import { ProximaCompetencia } from "@/features/competencias/components/ProximaCompetencia";
 import { aniosDisponibles, listarCompetenciasConResultados } from "@/features/competencias/queries";
+import { obtenerDeportes } from "@/features/sitio/queries";
 import { SelectorDeportePublico } from "@/features/publico/components/SelectorDeportePublico";
-import { DEPORTES_PUBLICO, deporteDeParametros, enlaceConDeporte, type ParametrosBusqueda } from "@/features/publico/deporte-publico";
+import { deporteDeParametros, enlaceConDeporte, type ParametrosBusqueda } from "@/features/publico/deporte-publico";
 
 const TITULO = "Competencias";
 const DESCRIPCION = "Calendario y resultados de los deportistas de la corporación TSW, por deporte, año y categoría.";
@@ -40,8 +41,12 @@ function hoyEnBogota(): string {
  * resto del sitio.
  */
 export default async function PaginaCompetencias({ searchParams }: Props) {
-  const [competencias, parametros] = await Promise.all([listarCompetenciasConResultados(), searchParams]);
-  const deporte = deporteDeParametros(parametros);
+  const [competencias, deportes, parametros] = await Promise.all([
+    listarCompetenciasConResultados(),
+    obtenerDeportes(),
+    searchParams,
+  ]);
+  const deporte = deporteDeParametros(parametros, deportes);
   const destacada = competencias.find((c) => c.destacado) ?? null;
   const anios = aniosDisponibles(competencias).map(String);
 
@@ -58,7 +63,7 @@ export default async function PaginaCompetencias({ searchParams }: Props) {
         bajada="Calendario y resultados de nuestros deportistas, válida por válida."
         lateral={
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-            <SelectorDeportePublico deportes={DEPORTES_PUBLICO} valor={deporte.id} fondo="oscuro" />
+            <SelectorDeportePublico deportes={deportes} valor={deporte.id} fondo="oscuro" />
             <FiltroAnio />
           </div>
         }

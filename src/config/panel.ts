@@ -11,6 +11,11 @@ export const SECCIONES_PANEL: SeccionPanel[] = [
   { href: "/admin/documentos", etiqueta: "Documentos", descripcion: "Formatos de matrícula y sus versiones." },
   { href: "/admin/competencias", etiqueta: "Competencias", descripcion: "Calendario, resultados y publicación." },
   { href: "/admin/niveles", etiqueta: "Niveles", descripcion: "Semilleros y niveles de formación." },
+  {
+    href: "/admin/sitio",
+    etiqueta: "Contenido del sitio",
+    descripcion: "Textos e imágenes de la portada, matrículas, semilleros y tienda.",
+  },
   { href: "/admin/productos", etiqueta: "Productos", descripcion: "Catálogo, tallas, precios e inventario." },
   { href: "/admin/pedidos", etiqueta: "Pedidos", descripcion: "Pedidos de la tienda y su estado." },
   {
