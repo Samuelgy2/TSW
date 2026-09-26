@@ -19,6 +19,7 @@
     "verificar:paleta": "node scripts/verificar-paleta.mjs",
     "verificar:politicas": "node scripts/verificar-politicas-anon.mjs",
     "verificar:parametros": "node scripts/verificar-parametros-rpc.mjs",
+    "verificar:use-server": "node scripts/verificar-use-server.mjs",
     "verificar:club": "tsx scripts/verificar-club-publico.ts",
     "verificar:legales": "tsx scripts/verificar-datos-legales.ts",
     "verificar:contenido": "node scripts/verificar-contenido-sitio.mjs",
@@ -30,7 +31,7 @@
     "verificar:inventario": "tsx scripts/verificar-inventario.ts",
     "verificar:auditoria": "tsx scripts/verificar-auditoria.ts",
     "verificar:contenido-remoto": "tsx scripts/verificar-contenido-remoto.ts",
-    "verificar": "npm run verificar:paleta && npm run verificar:politicas && npm run verificar:parametros && npm run verificar:club && npm run verificar:legales && npm run verificar:payload && npm run verificar:overflow",
+    "verificar": "npm run verificar:paleta && npm run verificar:politicas && npm run verificar:parametros && npm run verificar:use-server && npm run verificar:club && npm run verificar:legales && npm run verificar:payload && npm run verificar:overflow",
     "verificar:remoto": "npm run verificar:rls && npm run verificar:inventario && npm run verificar:auditoria && npm run verificar:contenido-remoto",
     "advisors": "supabase db advisors --linked --type all --level info"
   },

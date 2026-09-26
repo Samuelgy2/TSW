@@ -3,6 +3,10 @@ import { urlPublicaStorage } from "@/lib/supabase/storage";
 /** Bucket de las fotos que el panel sube desde /admin/sitio (migración 19). */
 export const BUCKET_SITIO = "sitio";
 
+/** Lo que acepta el bucket `sitio` (migración 19): sin AVIF ni SVG. */
+export const MIMES_IMAGEN_SITIO = ["image/jpeg", "image/png", "image/webp"] as const;
+export const MAXIMO_IMAGEN_SITIO_BYTES = 10 * 1024 * 1024;
+
 /**
  * Resuelve el campo `imagen` de una sección a una URL que `<Image>` pueda usar.
  *

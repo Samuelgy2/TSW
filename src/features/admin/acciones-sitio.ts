@@ -5,6 +5,11 @@ import { ErrorApp } from "@/lib/errors";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
 import { validarArchivo } from "@/lib/utils/archivos";
 import {
+  BUCKET_SITIO,
+  MAXIMO_IMAGEN_SITIO_BYTES,
+  MIMES_IMAGEN_SITIO,
+} from "@/features/sitio/imagenes";
+import {
   CLAVES_CONTENIDO,
   ESQUEMA_POR_CLAVE,
   type ClaveContenido,
@@ -69,12 +74,6 @@ export async function restablecerSeccionContenido(clave: ClaveContenido): Promis
   }
 }
 
-/** Solo estos tres: lo que acepta el bucket `sitio` (migración 19). Sin AVIF. */
-const MIMES_IMAGEN_SITIO = ["image/jpeg", "image/png", "image/webp"] as const;
-const MAXIMO_IMAGEN_SITIO_BYTES = 10 * 1024 * 1024;
-
-export { MIMES_IMAGEN_SITIO, MAXIMO_IMAGEN_SITIO_BYTES };
-
 /**
  * Sube una foto al bucket `sitio` y devuelve su ruta. NO escribe ningún campo:
  * a diferencia de `producto.imagen_path`, aquí la imagen es solo un campo más
@@ -110,7 +109,7 @@ export async function subirImagenSitio(archivo: File): Promise<ResultadoEscritur
     const ruta = `sitio/${crypto.randomUUID()}.${extension}`;
 
     const supabase = crearClienteAdmin();
-    const { error } = await supabase.storage.from("sitio").upload(ruta, archivo, {
+    const { error } = await supabase.storage.from(BUCKET_SITIO).upload(ruta, archivo, {
       contentType: veredicto.mime,
       upsert: false,
     });

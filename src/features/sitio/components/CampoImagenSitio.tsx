@@ -5,10 +5,7 @@ import { useState } from "react";
 
 import { Archivo, Boton } from "@/components/ui";
 import { subirImagenSitio } from "@/features/admin/acciones-sitio";
-import { resolverImagenSitio } from "../imagenes";
-
-const MIMES_IMAGEN_SITIO = ["image/jpeg", "image/png", "image/webp"] as const;
-const MAXIMO_IMAGEN_SITIO_BYTES = 10 * 1024 * 1024;
+import { MAXIMO_IMAGEN_SITIO_BYTES, MIMES_IMAGEN_SITIO, resolverImagenSitio } from "../imagenes";
 
 /**
  * Sube una foto al bucket `sitio` y deja su ruta en el borrador. NO la guarda

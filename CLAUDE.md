@@ -688,6 +688,7 @@ cero si cae cualquiera:
 | `verificar:paleta` | Una utilidad de rojo o un hexadecimal de marca suelto |
 | `verificar:politicas` | Una política que llegue a `anon` llamando a una función revocada para `anon` |
 | `verificar:parametros` | Una llamada a RPC sin un parámetro que el cuerpo exige, aunque `tsc` pase |
+| `verificar:use-server` | Que un archivo `"use server"` exporte algo que no sea una función async. Next lo rechaza al cargar el módulo, en la primera acción invocada: `tsc` y `next build` pasan, y en producción es un 500 con digest. Pasó con dos constantes en `acciones-sitio.ts` y tumbó todas las escrituras de `/admin/sitio` |
 | `verificar:club` | Que `/semilleros` caiga a un club equivocado o a un programa sin niveles |
 | `verificar:legales` | Un NIT cuyo dígito de verificación no cuadra con el algoritmo DIAN |
 | `verificar:payload` | Que viaje al navegador lo que está oculto: precios en modo catálogo, NIT sin confirmar, y que las páginas legales sin aprobar avisen y lleven `noindex` |
