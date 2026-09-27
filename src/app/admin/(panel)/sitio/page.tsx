@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { PaginaPanel } from "@/components/admin/PaginaPanel";
 import { SECCIONES_PANEL } from "@/config/panel";
 import { exigirAdminPagina } from "@/lib/auth";
-import { clubesParaLogos, contenidoParaPanel, ultimasEdicionesContenido } from "@/features/admin/queries-contenido";
+import { clubesParaPanel, contenidoParaPanel, ultimasEdicionesContenido } from "@/features/admin/queries-contenido";
 import { SitioAdmin } from "@/features/sitio/components/SitioAdmin";
 
 export const metadata: Metadata = { title: "Contenido del sitio" };
@@ -21,7 +21,7 @@ export default async function PaginaSitioPanel() {
   const [contenidoInicial, ediciones, clubes] = await Promise.all([
     contenidoParaPanel(),
     ultimasEdicionesContenido(),
-    clubesParaLogos(),
+    clubesParaPanel(),
   ]);
 
   return (

@@ -1,7 +1,10 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+
 import { exigirAdmin } from "@/lib/auth";
 import { ErrorApp } from "@/lib/errors";
+import { crearClienteServidor } from "@/lib/supabase/server";
 import {
   BUCKET_SITIO,
   MAXIMO_IMAGEN_SITIO_BYTES,
@@ -13,6 +16,7 @@ import {
   type ClaveContenido,
 } from "@/features/sitio/schemas";
 import { ejecutarRpc, revalidarPublico } from "./mutations";
+import { esquemaClub } from "./schemas";
 import {
   descartarSubida,
   extensionDe,
@@ -107,6 +111,53 @@ export async function prepararImagenSitio(mime: string, tamano: number): Promise
  * `guardarSeccionContenido`. El formulario mete la ruta en su borrador y el
  * guardado normal la persiste junto con el resto.
  */
+/**
+ * Guarda los datos editables de un club por `guardar_club` (migración 17).
+ *
+ * `guardar_club` es reemplazo total, pero el formulario no expone slug, tipo,
+ * deporte ni orden: esos se releen de la fila y se reenvían tal cual. Tomarlos
+ * del navegador sería dejar que el cliente los cambie sin pantalla que lo
+ * muestre. Solo filas `tipo = 'club'`: un programa no se edita desde aquí.
+ */
+export async function guardarClub(entrada: unknown): Promise<ResultadoEscritura> {
+  const datos = esquemaClub.safeParse(entrada);
+  if (!datos.success) return { ok: false, error: datos.error.issues[0]?.message ?? "Revisa los datos." };
+
+  try {
+    await exigirAdmin();
+    const c = datos.data;
+
+    const supabase = await crearClienteServidor();
+    const { data: actual, error } = await supabase
+      .from("club")
+      .select("slug, tipo, deporte, orden")
+      .eq("id", c.id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!actual || actual.tipo !== "club") return { ok: false, error: "El club no existe." };
+
+    await ejecutarRpc("guardar_club", {
+      p_id: c.id,
+      p_nombre: c.nombre,
+      p_slug: actual.slug,
+      p_tipo: actual.tipo,
+      p_deporte: actual.deporte,
+      p_etiqueta: c.etiqueta,
+      p_descripcion: c.descripcion,
+      p_color_identidad: c.colorIdentidad,
+      p_instagram_url: c.instagramUrl,
+      p_orden: actual.orden,
+    });
+
+    // El nombre y la etiqueta salen en el menú de clubes del layout, o sea en
+    // todas las páginas públicas: se revalida el layout entero, no una ruta.
+    revalidatePath("/", "layout");
+    return { ok: true, mensaje: "Club guardado." };
+  } catch (error) {
+    return { ok: false, error: mensajeDe(error) };
+  }
+}
+
 export async function prepararLogoClub(id: string, mime: string, tamano: number): Promise<SubidaPreparada> {
   try {
     await exigirAdmin();

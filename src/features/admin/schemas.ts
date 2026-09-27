@@ -23,6 +23,38 @@ const TEXTO_SEGURO = (campo: string, maximo: number) =>
 
 const UUID = z.string().uuid("Identificador inválido.");
 
+// --- Clubes -----------------------------------------------------------------
+
+/**
+ * Lo que el panel deja editar de un club. Slug, tipo, deporte y orden no están
+ * en el formulario: el slug va en los enlaces `?club=` y cambiarlo los rompería.
+ * `guardarClub` los relee de la fila y los reenvía, porque `guardar_club` es
+ * reemplazo total. Vacío en los opcionales = se borra el dato.
+ */
+export const esquemaClub = z.object({
+  id: UUID,
+  nombre: z
+    .string()
+    .trim()
+    .min(1, "El nombre es obligatorio.")
+    .max(80, "Nombre: máximo 80 caracteres.")
+    .refine((texto) => !/<[a-z!/]/i.test(texto), { message: "No se permite formato HTML en este campo." }),
+  etiqueta: TEXTO_SEGURO("Etiqueta", 80),
+  descripcion: TEXTO_SEGURO("Descripción", 1200),
+  colorIdentidad: z
+    .string()
+    .trim()
+    .regex(/^(#[0-9a-fA-F]{6})?$/, "El color va como #RRGGBB: numeral y seis caracteres."),
+  instagramUrl: z
+    .string()
+    .trim()
+    .refine((url) => url === "" || /^https:\/\/(www\.)?instagram\.com\/[A-Za-z0-9._]+\/?$/.test(url), {
+      message: "Pega el enlace completo del perfil: https://www.instagram.com/usuario",
+    }),
+});
+
+export type EntradaClub = z.infer<typeof esquemaClub>;
+
 // --- Acceso (bloque A) ------------------------------------------------------
 
 export const esquemaAcceso = z.object({

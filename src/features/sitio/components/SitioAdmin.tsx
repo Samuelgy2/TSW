@@ -8,11 +8,11 @@ import {
   guardarSeccionContenido,
   restablecerSeccionContenido,
 } from "@/features/admin/acciones-sitio";
-import type { ClubLogo, EdicionSeccion } from "@/features/admin/queries-contenido";
+import type { ClubPanel, EdicionSeccion } from "@/features/admin/queries-contenido";
 import { formatearFechaHora } from "@/lib/utils";
 import { CampoImagenSitio } from "./CampoImagenSitio";
 import { ListaEditable, ListaTextoEditable } from "./ListaEditable";
-import { LogosClubes } from "./LogosClubes";
+import { ClubesAdmin } from "./ClubesAdmin";
 import type {
   ClaveContenido,
   EntradaDeportes,
@@ -30,7 +30,7 @@ type Contenido = {
   tienda: EntradaTienda;
 };
 
-/** "clubes" no es una sección de contenido_sitio: son los logos, que van por su RPC. */
+/** "clubes" no es una sección de contenido_sitio: datos y logo de cada club, por sus RPC. */
 type Pestana = ClaveContenido | "clubes";
 
 const PESTANAS: { valor: Pestana; etiqueta: string }[] = [
@@ -39,7 +39,7 @@ const PESTANAS: { valor: Pestana; etiqueta: string }[] = [
   { valor: "matriculas", etiqueta: "Matrículas" },
   { valor: "semilleros", etiqueta: "Semilleros" },
   { valor: "tienda", etiqueta: "Tienda" },
-  { valor: "clubes", etiqueta: "Logos de clubes" },
+  { valor: "clubes", etiqueta: "Clubes" },
 ];
 
 /**
@@ -65,7 +65,7 @@ export function SitioAdmin({
 }: {
   contenidoInicial: Contenido;
   ediciones: Record<ClaveContenido, EdicionSeccion>;
-  clubes: ClubLogo[];
+  clubes: ClubPanel[];
 }) {
   const router = useRouter();
   const [pestana, setPestana] = useState<Pestana>("deportes");
@@ -117,7 +117,7 @@ export function SitioAdmin({
       >
         {edicion === null ? (
           <div className="mt-6">
-            <LogosClubes clubes={clubes} />
+            <ClubesAdmin clubes={clubes} />
           </div>
         ) : (
         <div className="mt-6 flex flex-col gap-6">
