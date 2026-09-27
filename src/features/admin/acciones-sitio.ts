@@ -2,8 +2,6 @@
 
 import { exigirAdmin } from "@/lib/auth";
 import { ErrorApp } from "@/lib/errors";
-import { crearClienteAdmin } from "@/lib/supabase/admin";
-import { validarArchivo } from "@/lib/utils/archivos";
 import {
   BUCKET_SITIO,
   MAXIMO_IMAGEN_SITIO_BYTES,
@@ -15,6 +13,14 @@ import {
   type ClaveContenido,
 } from "@/features/sitio/schemas";
 import { ejecutarRpc, revalidarPublico } from "./mutations";
+import {
+  descartarSubida,
+  extensionDe,
+  firmarSubida,
+  validarDeclarado,
+  verificarSubida,
+  type SubidaPreparada,
+} from "./subida-directa";
 
 /** Resultado de una acción de escritura cuando no redirige. */
 export type ResultadoEscritura = { ok: true; mensaje?: string } | { ok: false; error: string };
@@ -74,47 +80,98 @@ export async function restablecerSeccionContenido(clave: ClaveContenido): Promis
   }
 }
 
+const OPCIONES_IMAGEN_SITIO = { mimesPermitidos: MIMES_IMAGEN_SITIO, maximoBytes: MAXIMO_IMAGEN_SITIO_BYTES };
+const UUID = /^[0-9a-f-]{36}$/i;
+
 /**
- * Sube una foto al bucket `sitio` y devuelve su ruta. NO escribe ningún campo:
- * a diferencia de `producto.imagen_path`, aquí la imagen es solo un campo más
- * dentro del jsonb de una sección, y esa sección se guarda entera con
- * `guardarSeccionContenido`. El formulario recibe la ruta, la mete en su
- * borrador local, y el guardado normal la persiste junto con el resto.
- *
- * Tipo y tamaño se comprueban DOS veces: en el cliente (el primitivo `Archivo`,
- * antes de llamar a esto) para no subir 10 MB para que los rechacen, y aquí,
- * por firma de bytes, porque el cliente no es de fiar.
+ * Paso 1 de la subida directa (ver `subida-directa.ts`): decide la ruta y
+ * firma la subida. El archivo no pasa por aquí.
  */
-export async function subirImagenSitio(archivo: File): Promise<ResultadoEscritura & { ruta?: string }> {
+export async function prepararImagenSitio(mime: string, tamano: number): Promise<SubidaPreparada> {
   try {
     await exigirAdmin();
+    const invalido = validarDeclarado(mime, tamano, OPCIONES_IMAGEN_SITIO);
+    if (invalido) return { ok: false, error: invalido };
 
-    const veredicto = await validarArchivo(archivo, {
-      mimesPermitidos: MIMES_IMAGEN_SITIO,
-      maximoBytes: MAXIMO_IMAGEN_SITIO_BYTES,
-    });
-    if (!veredicto.ok) {
-      return {
-        ok: false,
-        error:
-          veredicto.error === "grande"
-            ? "La imagen supera el tope de 10 MB."
-            : veredicto.error === "vacio"
-              ? "El archivo está vacío."
-              : "El archivo no es una imagen válida (JPEG, PNG o WebP).",
-      };
+    const ruta = `sitio/${crypto.randomUUID()}.${extensionDe(mime)}`;
+    return { ok: true, bucket: BUCKET_SITIO, ruta, token: await firmarSubida(BUCKET_SITIO, ruta) };
+  } catch (error) {
+    return { ok: false, error: mensajeDe(error) };
+  }
+}
+
+/**
+ * Paso 3: comprueba por firma de bytes el archivo ya subido y devuelve su
+ * ruta. NO escribe ningún campo: aquí la imagen es solo un campo más dentro del
+ * jsonb de una sección, y esa sección se guarda entera con
+ * `guardarSeccionContenido`. El formulario mete la ruta en su borrador y el
+ * guardado normal la persiste junto con el resto.
+ */
+export async function prepararLogoClub(id: string, mime: string, tamano: number): Promise<SubidaPreparada> {
+  try {
+    await exigirAdmin();
+    if (!UUID.test(id)) return { ok: false, error: "Club inválido." };
+    const invalido = validarDeclarado(mime, tamano, OPCIONES_IMAGEN_SITIO);
+    if (invalido) return { ok: false, error: invalido };
+
+    // Mismo bucket que el resto de las imágenes del sitio, en su carpeta.
+    const ruta = `clubes/${crypto.randomUUID()}.${extensionDe(mime)}`;
+    return { ok: true, bucket: BUCKET_SITIO, ruta, token: await firmarSubida(BUCKET_SITIO, ruta) };
+  } catch (error) {
+    return { ok: false, error: mensajeDe(error) };
+  }
+}
+
+/**
+ * Paso 3 del logo: verifica el archivo y, solo entonces, lo fija con
+ * `establecer_logo_club`, el único camino por el que cambia (migración 17),
+ * con el actor en la bitácora. Si la RPC falla, el archivo se borra.
+ */
+export async function confirmarLogoClub(id: string, ruta: string): Promise<ResultadoEscritura & { ruta?: string }> {
+  try {
+    await exigirAdmin();
+    if (!UUID.test(id)) return { ok: false, error: "Club inválido." };
+    if (!/^clubes\/[0-9a-f-]{36}\.(jpg|png|webp)$/.test(ruta)) return { ok: false, error: "Ruta de imagen inválida." };
+
+    const verificada = await verificarSubida(BUCKET_SITIO, ruta, OPCIONES_IMAGEN_SITIO);
+    if (!verificada.ok) return verificada;
+
+    try {
+      await ejecutarRpc("establecer_logo_club", { p_id: id, p_logo_path: ruta });
+    } catch (error) {
+      await descartarSubida(BUCKET_SITIO, ruta);
+      throw error;
     }
+    revalidarPublico("club");
+    return { ok: true, mensaje: "Logo cargado.", ruta };
+  } catch (error) {
+    return { ok: false, error: mensajeDe(error) };
+  }
+}
 
-    const extension = veredicto.mime === "image/jpeg" ? "jpg" : veredicto.mime.split("/")[1];
-    const ruta = `sitio/${crypto.randomUUID()}.${extension}`;
+/**
+ * Quita el logo: el club vuelve a mostrar sus iniciales. El archivo se queda
+ * en el bucket, igual que las fotos reemplazadas de productos y competencias:
+ * la bitácora conserva la ruta anterior.
+ */
+export async function quitarLogoClub(id: string): Promise<ResultadoEscritura> {
+  try {
+    if (!UUID.test(id)) return { ok: false, error: "Club inválido." };
+    await ejecutarRpc("establecer_logo_club", { p_id: id, p_logo_path: "" });
+    revalidarPublico("club");
+    return { ok: true, mensaje: "Logo quitado." };
+  } catch (error) {
+    return { ok: false, error: mensajeDe(error) };
+  }
+}
 
-    const supabase = crearClienteAdmin();
-    const { error } = await supabase.storage.from(BUCKET_SITIO).upload(ruta, archivo, {
-      contentType: veredicto.mime,
-      upsert: false,
-    });
-    if (error) throw error;
+export async function confirmarImagenSitio(ruta: string): Promise<ResultadoEscritura & { ruta?: string }> {
+  try {
+    await exigirAdmin();
+    if (!/^sitio\/[0-9a-f-]{36}\.(jpg|png|webp)$/.test(ruta)) return { ok: false, error: "Ruta de imagen inválida." };
 
+    const verificada = await verificarSubida(BUCKET_SITIO, ruta, OPCIONES_IMAGEN_SITIO);
+    if (!verificada.ok) return verificada;
     return { ok: true, mensaje: "Imagen cargada.", ruta };
   } catch (error) {
     return { ok: false, error: mensajeDe(error) };

@@ -4,7 +4,8 @@ import Image from "next/image";
 import { useState } from "react";
 
 import { Archivo, Boton } from "@/components/ui";
-import { subirImagenSitio } from "@/features/admin/acciones-sitio";
+import { confirmarImagenSitio, prepararImagenSitio } from "@/features/admin/acciones-sitio";
+import { subirDirecto } from "@/features/admin/subir-directo";
 import { MAXIMO_IMAGEN_SITIO_BYTES, MIMES_IMAGEN_SITIO, resolverImagenSitio } from "../imagenes";
 
 /**
@@ -12,11 +13,12 @@ import { MAXIMO_IMAGEN_SITIO_BYTES, MIMES_IMAGEN_SITIO, resolverImagenSitio } fr
  * en la base todavía: eso pasa cuando el admin pulsa "Guardar" en la sección
  * completa, igual que cualquier otro campo del formulario.
  *
- * El tipo y el tamaño se comprueban ANTES de subir, en el cliente: el
- * primitivo `Archivo` los verifica por la firma de bytes real del archivo, no
- * por su extensión, y no llama a `alSeleccionar` si no pasan. El servidor
- * (`subirImagenSitio`) los vuelve a comprobar, porque el cliente no es de
- * fiar aunque sea el propio panel.
+ * El archivo va directo del navegador a Storage con una URL firmada
+ * (`subirDirecto`), sin pasar por la función: así no le afecta el tope de
+ * 4,5 MB de Vercel. El tipo y el tamaño se comprueban antes de subir, en el
+ * cliente, por firma de bytes, y otra vez en el servidor sobre el objeto ya
+ * subido (`confirmarImagenSitio`), porque el cliente no es de fiar aunque sea
+ * el propio panel.
  */
 export function CampoImagenSitio({
   etiqueta,
@@ -30,10 +32,18 @@ export function CampoImagenSitio({
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function alElegir(archivo: File) {
+  async function alElegir(archivo: File | null) {
+    // `Archivo` avisa con null cuando el elegido no pasó su validación: ya
+    // mostró el error, no hay nada que subir.
+    if (!archivo) return;
     setCargando(true);
     setError(null);
-    const resultado = await subirImagenSitio(archivo);
+    const resultado = await subirDirecto(
+      archivo,
+      { mimesPermitidos: MIMES_IMAGEN_SITIO, maximoBytes: MAXIMO_IMAGEN_SITIO_BYTES },
+      prepararImagenSitio,
+      confirmarImagenSitio,
+    );
     setCargando(false);
     if (!resultado.ok) {
       setError(resultado.error);

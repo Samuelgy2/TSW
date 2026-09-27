@@ -91,3 +91,28 @@ export async function contenidoParaPanel() {
   ]);
   return { deportes, portada, matriculas, semilleros, tienda };
 }
+
+export type ClubLogo = {
+  id: string;
+  nombre: string;
+  activo: boolean;
+  color_identidad: string | null;
+  logo_path: string | null;
+};
+
+/**
+ * Todos los clubes y programas, activos o no, para la pestaña de logos. Con la
+ * sesión del administrador: la lectura con sesión de `club` exige es_admin()
+ * (migración 17), y un club desactivado también puede necesitar su logo antes
+ * de volver a publicarse.
+ */
+export async function clubesParaLogos(): Promise<ClubLogo[]> {
+  await exigirAdmin();
+  const supabase = await crearClienteServidor();
+  const { data, error } = await supabase
+    .from("club")
+    .select("id, nombre, activo, color_identidad, logo_path")
+    .order("orden", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}

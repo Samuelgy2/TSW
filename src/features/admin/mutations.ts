@@ -70,6 +70,9 @@ const RUTAS_POR_ENTIDAD = {
   competencia: ["/", "/competencias"],
   producto: ["/", "/tienda"],
   pedido: [],
+  // Hoy solo el logo: es lo único del club que el panel escribe, y solo lo
+  // pinta /semilleros. El menú del layout no lleva logo.
+  club: ["/semilleros"],
   // Contenido editable del sitio (migración 19, contenido_sitio). Una entrada
   // por sección: cada una afecta solo a las páginas que la leen.
   contenido_deportes: ["/", "/semilleros", "/tienda", "/matriculas"],

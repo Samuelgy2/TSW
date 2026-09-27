@@ -4,6 +4,14 @@ import { exigirAdmin } from "@/lib/auth";
 import { ErrorApp } from "@/lib/errors";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
 import { ejecutarRpc, revalidarPublico } from "./mutations";
+import {
+  descartarSubida,
+  extensionDe,
+  firmarSubida,
+  validarDeclarado,
+  verificarSubida,
+  type SubidaPreparada,
+} from "./subida-directa";
 import { BUCKET_DOCUMENTOS, BUCKET_COMPETENCIAS, MAXIMO_IMAGEN_BYTES, MAXIMO_PDF_BYTES, MIMES_IMAGEN, MIMES_PDF } from "./constantes";
 import {
   esquemaCompetencia,
@@ -19,7 +27,6 @@ import {
   type EntradaPublicarVersion,
   type EntradaResultado,
 } from "./schemas";
-import { validarArchivo } from "@/lib/utils/archivos";
 import type { Resultado } from "./types";
 
 /** Resultado de una acción de escritura cuando no redirige. */
@@ -77,16 +84,20 @@ export async function alternarDocumento(id: string, activo: boolean): Promise<Re
   }
 }
 
+const OPCIONES_PDF = { mimesPermitidos: MIMES_PDF, maximoBytes: MAXIMO_PDF_BYTES };
+
 /**
  * Publicar una versión nueva: la única forma de cambiar el archivo de un
- * documento. El PDF ya se validó (firma de bytes y tamaño) y se subió en
- * `subirPdfDocumento`; aquí solo se inserta la fila por RPC. Se sube ANTES
- * de insertar: si la fila falla, queda un objeto huérfano sin referencia,
- * pero si se insertara primero y la subida fallara, habría una fila vigente
- * apuntando al vacío. El orden de los daños importa.
+ * documento. Es el paso 3 de la subida directa (ver `subida-directa.ts`): el
+ * PDF ya está en Storage, en la ruta que firmó `prepararVersionDocumento`.
  *
- * No recibe el archivo: mandarlo otra vez duplicaba el tráfico de cada
- * publicación sin usarlo para nada.
+ * Se sube ANTES de insertar: si se insertara primero y la subida fallara,
+ * habría una fila vigente apuntando al vacío. Y si la fila falla después —dos
+ * publicaciones a la vez que pidieron el mismo número de versión, por
+ * ejemplo—, el PDF se borra: nadie lo referencia y el bucket es público.
+ *
+ * La versión sale de la ruta y el tamaño se mide sobre el archivo subido: el
+ * navegador no decide ninguno de los dos.
  */
 export async function publicarVersionDocumento(entrada: EntradaPublicarVersion): Promise<ResultadoEscritura> {
   const datos = esquemaPublicarVersion.safeParse(entrada);
@@ -95,19 +106,32 @@ export async function publicarVersionDocumento(entrada: EntradaPublicarVersion):
   }
 
   try {
+    await exigirAdmin();
     const d = datos.data;
 
-    // La ruta la valida el CHECK documento_version_ruta_versionada (migración 03).
-    await ejecutarRpc("publicar_documento_version", {
-      p_documento_id: d.documentoId,
-      p_version: d.version,
-      p_storage_path: d.storagePath,
-      p_nombre_archivo: d.nombreArchivo,
-      p_tamano_bytes: d.tamanoBytes,
-    });
+    const partes = /^documentos\/([0-9a-f-]{36})\/v(\d+)\//.exec(d.storagePath);
+    if (!partes || partes[1] !== d.documentoId) return { ok: false, error: "La ruta no corresponde a este documento." };
+    const version = Number(partes[2]);
+
+    const verificada = await verificarSubida(BUCKET_DOCUMENTOS, d.storagePath, OPCIONES_PDF);
+    if (!verificada.ok) return verificada;
+
+    try {
+      // La ruta la valida además el CHECK documento_version_ruta_versionada (migración 03).
+      await ejecutarRpc("publicar_documento_version", {
+        p_documento_id: d.documentoId,
+        p_version: version,
+        p_storage_path: d.storagePath,
+        p_nombre_archivo: d.nombreArchivo,
+        p_tamano_bytes: verificada.tamano,
+      });
+    } catch (error) {
+      await descartarSubida(BUCKET_DOCUMENTOS, d.storagePath);
+      throw error;
+    }
 
     revalidarPublico("documento");
-    return { ok: true, mensaje: `Versión ${d.version} publicada. La anterior quedó archivada.` };
+    return { ok: true, mensaje: `Versión ${version} publicada. La anterior quedó archivada.` };
   } catch (error) {
     return { ok: false, error: mensajeDe(error) };
   }
@@ -183,40 +207,69 @@ export async function destacarCompetencia(id: string, destacar: boolean): Promis
   }
 }
 
+const OPCIONES_IMAGEN = { mimesPermitidos: MIMES_IMAGEN, maximoBytes: MAXIMO_IMAGEN_BYTES };
+const UUID = /^[0-9a-f-]{36}$/i;
+
 /**
- * Subir la foto de una competencia. La autorización de imagen debe estar
- * marcada ANTES de permitir la carga: en las fotos hay menores de edad.
+ * Paso 1 de la subida directa de la foto de una competencia (ver
+ * `subida-directa.ts`). En las fotos hay menores de edad: NO se firma la
+ * subida si la autorización de imagen no está GUARDADA en la base. La casilla
+ * marcada en el formulario no basta; antes, marcarla sin guardar dejaba subir
+ * la foto al bucket público y la RPC la rechazaba después, con la foto ya
+ * publicada.
  */
-export async function subirImagenCompetencia(id: string, archivo: File): Promise<ResultadoEscritura & { imagenPath?: string }> {
+export async function prepararImagenCompetencia(id: string, mime: string, tamano: number): Promise<SubidaPreparada> {
   try {
     await exigirAdmin();
+    if (!UUID.test(id)) return { ok: false, error: "Competencia inválida." };
+    const invalido = validarDeclarado(mime, tamano, OPCIONES_IMAGEN);
+    if (invalido) return { ok: false, error: invalido };
 
-    const veredicto = await validarArchivo(archivo, { mimesPermitidos: MIMES_IMAGEN, maximoBytes: MAXIMO_IMAGEN_BYTES });
-    if (!veredicto.ok) {
-      return {
-        ok: false,
-        error:
-          veredicto.error === "grande"
-            ? "La imagen supera el tope de 10 MB."
-            : veredicto.error === "vacio"
-              ? "El archivo está vacío."
-              : "El archivo no es una imagen válida (JPEG, PNG, WebP o AVIF).",
-      };
+    const { data, error } = await crearClienteAdmin()
+      .from("competencia")
+      .select("autorizacion_imagen_en")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return { ok: false, error: "La competencia no existe." };
+    if (data.autorizacion_imagen_en === null) {
+      return { ok: false, error: "Guarda primero la competencia con la autorización de uso de imagen marcada." };
     }
 
     // Renombrado a UUID: el nombre original nunca llega a Storage.
-    const extension = veredicto.mime === "image/jpeg" ? "jpg" : veredicto.mime.split("/")[1] ?? "img";
-    const ruta = `${id}/${crypto.randomUUID()}.${extension}`;
+    const ruta = `${id}/${crypto.randomUUID()}.${extensionDe(mime)}`;
+    return { ok: true, bucket: BUCKET_COMPETENCIAS, ruta, token: await firmarSubida(BUCKET_COMPETENCIAS, ruta) };
+  } catch (error) {
+    return { ok: false, error: mensajeDe(error) };
+  }
+}
 
-    const supabase = crearClienteAdmin();
-    const { error } = await supabase.storage.from(BUCKET_COMPETENCIAS).upload(ruta, archivo, {
-      contentType: veredicto.mime,
-      upsert: false,
-    });
-    if (error) throw error;
+/**
+ * Paso 3: verifica el archivo ya subido y escribe la ruta por RPC. Si la RPC
+ * falla —por ejemplo, porque la autorización se desmarcó entre medias y el
+ * CHECK de la tabla la para—, el archivo se borra: una foto de menores sin
+ * autorización no se queda publicada en el bucket.
+ */
+export async function confirmarImagenCompetencia(
+  id: string,
+  ruta: string,
+): Promise<ResultadoEscritura & { imagenPath?: string }> {
+  try {
+    await exigirAdmin();
+    if (!UUID.test(id)) return { ok: false, error: "Competencia inválida." };
+    const patron = new RegExp(`^${id}/[0-9a-f-]{36}\\.(jpg|png|webp|avif)$`);
+    if (!patron.test(ruta)) return { ok: false, error: "Ruta de imagen inválida." };
 
-    // La única forma de escribir competencia.imagen_path (migración 11).
-    await ejecutarRpc("establecer_imagen_competencia", { p_id: id, p_imagen_path: ruta });
+    const verificada = await verificarSubida(BUCKET_COMPETENCIAS, ruta, OPCIONES_IMAGEN);
+    if (!verificada.ok) return verificada;
+
+    try {
+      // La única forma de escribir competencia.imagen_path (migración 11).
+      await ejecutarRpc("establecer_imagen_competencia", { p_id: id, p_imagen_path: ruta });
+    } catch (error) {
+      await descartarSubida(BUCKET_COMPETENCIAS, ruta);
+      throw error;
+    }
     revalidarPublico("competencia");
     return { ok: true, mensaje: "Imagen cargada.", imagenPath: ruta };
   } catch (error) {
@@ -328,65 +381,21 @@ export async function alternarNivel(id: string, activo: boolean): Promise<Result
 // --- Utilidades -----------------------------------------------------------------
 
 /**
- * El número de versión y la ruta del PDF se deciden ANTES de subir: la versión
- * va dentro de la ruta (migración 03). El cliente llama esto primero, sube el
- * archivo a la ruta recibida y al final llama publicarVersionDocumento.
+ * Paso 1 de la subida directa del PDF: el número de versión y la ruta se
+ * deciden ANTES de subir, porque la versión va dentro de la ruta (migración
+ * 03). Después el navegador sube a esa ruta con el token, y al final llama a
+ * `publicarVersionDocumento`, que saca la versión de la misma ruta.
  */
-export async function prepararVersionDocumento(documentoId: string): Promise<
-  | { ok: true; version: number; storagePath: string; bucket: string }
-  | { ok: false; error: string }
-> {
+export async function prepararVersionDocumento(documentoId: string, mime: string, tamano: number): Promise<SubidaPreparada> {
   try {
     await exigirAdmin();
-    if (!/^[0-9a-f-]{36}$/i.test(documentoId)) return { ok: false, error: "Documento inválido." };
+    if (!UUID.test(documentoId)) return { ok: false, error: "Documento inválido." };
+    const invalido = validarDeclarado(mime, tamano, OPCIONES_PDF);
+    if (invalido) return { ok: false, error: invalido };
 
     const version = await ejecutarRpc("siguiente_version_documento", { p_documento_id: documentoId });
-    return {
-      ok: true,
-      version,
-      storagePath: `documentos/${documentoId}/v${version}/${crypto.randomUUID()}.pdf`,
-      bucket: BUCKET_DOCUMENTOS,
-    };
-  } catch (error) {
-    return { ok: false, error: mensajeDe(error) };
-  }
-}
-
-export async function subirPdfDocumento(storagePath: string, archivo: File): Promise<ResultadoEscritura> {
-  try {
-    await exigirAdmin();
-
-    const veredicto = await validarArchivo(archivo, { mimesPermitidos: MIMES_PDF, maximoBytes: MAXIMO_PDF_BYTES });
-    if (!veredicto.ok) {
-      return {
-        ok: false,
-        error:
-          veredicto.error === "grande"
-            ? "El PDF supera el tope de 10 MB."
-            : veredicto.error === "vacio"
-              ? "El archivo está vacío."
-              : "El archivo no es un PDF válido.",
-      };
-    }
-
-    // La ruta debe tener el formato documentos/{documento_id}/v{version}/...
-    // que valida el CHECK de la migración 03; no se acepta cualquiera.
-    if (!/^documentos\/[0-9a-f-]{36}\/v\d+\/[0-9a-f-]{36}\.pdf$/.test(storagePath)) {
-      return { ok: false, error: "La ruta de destino no es válida." };
-    }
-
-    const supabase = crearClienteAdmin();
-    const { error } = await supabase.storage.from(BUCKET_DOCUMENTOS).upload(storagePath, archivo, {
-      contentType: "application/pdf",
-      upsert: false,
-    });
-    if (error) {
-      if (error.message.includes("exists") || String(error.statusCode) === "409") {
-        return { ok: false, error: "Esa versión ya se publicó. Recarga la página e inténtalo de nuevo." };
-      }
-      throw error;
-    }
-    return { ok: true };
+    const ruta = `documentos/${documentoId}/v${version}/${crypto.randomUUID()}.pdf`;
+    return { ok: true, bucket: BUCKET_DOCUMENTOS, ruta, token: await firmarSubida(BUCKET_DOCUMENTOS, ruta) };
   } catch (error) {
     return { ok: false, error: mensajeDe(error) };
   }

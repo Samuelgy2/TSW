@@ -2,8 +2,15 @@
 
 import { exigirAdmin } from "@/lib/auth";
 import { ErrorApp } from "@/lib/errors";
-import { crearClienteAdmin } from "@/lib/supabase/admin";
 import { ejecutarRpc, revalidarPublico } from "./mutations";
+import {
+  descartarSubida,
+  extensionDe,
+  firmarSubida,
+  validarDeclarado,
+  verificarSubida,
+  type SubidaPreparada,
+} from "./subida-directa";
 import { BUCKET_PRODUCTOS, MAXIMO_IMAGEN_BYTES, MIMES_IMAGEN } from "./constantes";
 import {
   esquemaProducto,
@@ -11,7 +18,6 @@ import {
   type EntradaProducto,
   type EntradaVariantePanel,
 } from "./schemas";
-import { validarArchivo } from "@/lib/utils/archivos";
 
 /** Resultado de una acción de escritura cuando no redirige. */
 export type ResultadoEscritura = { ok: true; mensaje?: string } | { ok: false; error: string };
@@ -50,45 +56,50 @@ export async function guardarProducto(entrada: EntradaProducto): Promise<Resulta
   }
 }
 
+const OPCIONES_IMAGEN = { mimesPermitidos: MIMES_IMAGEN, maximoBytes: MAXIMO_IMAGEN_BYTES };
+const UUID = /^[0-9a-f-]{36}$/i;
+
 /**
- * Subir la foto del producto. El archivo se valida por firma de bytes aquí
- * también: el cliente no se confía. Se renombra a UUID —el nombre original
- * nunca llega a Storage— y la ruta se escribe por RPC con el actor.
+ * Paso 1 de la subida directa de la foto del producto (ver
+ * `subida-directa.ts`). Ruta con UUID: el nombre original nunca llega a Storage.
  */
-export async function subirImagenProducto(
+export async function prepararImagenProducto(id: string, mime: string, tamano: number): Promise<SubidaPreparada> {
+  try {
+    await exigirAdmin();
+    if (!UUID.test(id)) return { ok: false, error: "Producto inválido." };
+    const invalido = validarDeclarado(mime, tamano, OPCIONES_IMAGEN);
+    if (invalido) return { ok: false, error: invalido };
+
+    const ruta = `productos/${crypto.randomUUID()}.${extensionDe(mime)}`;
+    return { ok: true, bucket: BUCKET_PRODUCTOS, ruta, token: await firmarSubida(BUCKET_PRODUCTOS, ruta) };
+  } catch (error) {
+    return { ok: false, error: mensajeDe(error) };
+  }
+}
+
+/**
+ * Paso 3: verifica el archivo ya subido por firma de bytes y, solo entonces,
+ * escribe la ruta por RPC con el actor. Si la RPC falla, el archivo se borra.
+ */
+export async function confirmarImagenProducto(
   id: string,
-  archivo: File,
+  ruta: string,
 ): Promise<ResultadoEscritura & { imagenPath?: string }> {
   try {
     await exigirAdmin();
+    if (!UUID.test(id)) return { ok: false, error: "Producto inválido." };
+    if (!/^productos\/[0-9a-f-]{36}\.(jpg|png|webp|avif)$/.test(ruta)) return { ok: false, error: "Ruta de imagen inválida." };
 
-    const veredicto = await validarArchivo(archivo, { mimesPermitidos: MIMES_IMAGEN, maximoBytes: MAXIMO_IMAGEN_BYTES });
-    if (!veredicto.ok) {
-      return {
-        ok: false,
-        error:
-          veredicto.error === "grande"
-            ? "La imagen supera el tope de 10 MB."
-            : veredicto.error === "vacio"
-              ? "El archivo está vacío."
-              : "El archivo no es una imagen válida (JPEG, PNG, WebP o AVIF).",
-      };
+    const verificada = await verificarSubida(BUCKET_PRODUCTOS, ruta, OPCIONES_IMAGEN);
+    if (!verificada.ok) return verificada;
+
+    try {
+      // La única forma de escribir producto.imagen_path (migración 12).
+      await ejecutarRpc("establecer_imagen_producto", { p_id: id, p_imagen_path: ruta });
+    } catch (error) {
+      await descartarSubida(BUCKET_PRODUCTOS, ruta);
+      throw error;
     }
-
-    if (!/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, error: "Producto inválido." };
-
-    const extension = veredicto.mime === "image/jpeg" ? "jpg" : veredicto.mime.split("/")[1] ?? "img";
-    const ruta = `productos/${crypto.randomUUID()}.${extension}`;
-
-    const supabase = crearClienteAdmin();
-    const { error } = await supabase.storage.from(BUCKET_PRODUCTOS).upload(ruta, archivo, {
-      contentType: veredicto.mime,
-      upsert: false,
-    });
-    if (error) throw error;
-
-    // La única forma de escribir producto.imagen_path (migración 12).
-    await ejecutarRpc("establecer_imagen_producto", { p_id: id, p_imagen_path: ruta });
     revalidarPublico("producto");
     return { ok: true, mensaje: "Imagen cargada.", imagenPath: ruta };
   } catch (error) {

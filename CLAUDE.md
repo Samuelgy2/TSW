@@ -334,6 +334,37 @@ producto, quiere cambiar un booleano.
   SQL editor y el MCP abren una conexión por consulta y no sirven. Si no se
   puede correr, dilo: no la simules ni la des por verificada.
 
+### Subidas: directo a Storage, nunca por una Server Action
+
+Vercel corta el cuerpo de una petición a una función en **4,5 MB**, diga lo
+que diga `bodySizeLimit`. Con el archivo dentro de la Server Action, toda foto
+o PDF de 4,5 a 10 MB moría con 413 aunque el formulario prometiera 10 MB.
+
+Tres pasos, en `features/admin/subida-directa.ts` (servidor) y
+`subir-directo.ts` (navegador), para las cinco subidas del panel: fotos de
+sitio, productos y competencias, logos de clubes y PDF de documentos.
+
+1. **Preparar** (acción): `exigirAdmin`, tipo y tamaño declarados, ruta con
+   UUID, URL firmada. El token vale 2 horas, para esa ruta exacta, y no
+   sobrescribe (comprobado contra el remoto).
+2. **Subir** (navegador): `uploadToSignedUrl`. El bucket aplica su tamaño y
+   su lista de tipos, **pero sobre el Content-Type declarado**: un ejecutable
+   renombrado a `.png` pasa (comprobado).
+3. **Confirmar** (acción): `verificarSubida` lee con `Range` los primeros 64
+   bytes del objeto ya subido y su tamaño real. Si no cuadran, **lo borra**.
+   Solo entonces la ruta llega a una tabla, por su RPC; si la RPC falla, el
+   archivo también se borra. En un bucket público, un archivo sin fila no
+   está huérfano: está publicado.
+
+**Las políticas de Storage no participan**: la URL la firma la service role y
+la subida con token no evalúa RLS. La barrera es `exigirAdmin()` en los pasos
+1 y 3. Por eso ninguna de las dos acciones puede saltárselo.
+
+Competencias añade una regla: **preparar no firma si la autorización de
+imagen no está guardada en la base**. Antes bastaba con marcar la casilla sin
+guardar: la foto se subía al bucket público, la RPC la rechazaba por el CHECK
+y quedaba publicada sin autorización.
+
 ### Invariante de fotos de menores
 
 ```sql
@@ -554,10 +585,10 @@ de "el inventario no se repone"; bitácora paginada con antes/después; sin
 > Falta también registrar `${NEXT_PUBLIC_SITE_URL}/admin/auth/callback` en
 > Authentication → URL Configuration → Redirect URLs.
 >
-> **3. Subidas mayores de 1 MB fallan.** Los PDF e imágenes viajan por Server
-> Actions y `next.config.ts` no define `experimental.serverActions.bodySizeLimit`
-> (por defecto 1 MB). El PDF además se manda dos veces: en `subirPdfDocumento` y
-> otra vez en `publicarVersionDocumento`, que lo revalida sin usarlo.
+> **3. ~~Subidas mayores de 1 MB fallan.~~ Resuelto el 26-09-2026.** Subir
+> `bodySizeLimit` no bastaba: Vercel corta el cuerpo de una función en 4,5 MB.
+> Hoy ningún archivo pasa por una Server Action: van directo del navegador a
+> Storage con URL firmada. Ver "Subidas: directo a Storage" más abajo.
 >
 > **4. Server Actions de las migraciones 11 y 12 sin escribir.** Siguen llamando
 > a las firmas viejas. Es el siguiente bloque de trabajo, y solo puede empezar

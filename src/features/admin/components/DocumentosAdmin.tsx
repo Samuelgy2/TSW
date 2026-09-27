@@ -10,8 +10,8 @@ import {
   guardarDocumento,
   prepararVersionDocumento,
   publicarVersionDocumento,
-  subirPdfDocumento,
 } from "../acciones-contenido";
+import { subirDirecto } from "../subir-directo";
 import { MAXIMO_PDF_BYTES, MIMES_PDF } from "../constantes";
 import type { DocumentoConVersiones, DocumentoVersion } from "../types";
 
@@ -245,30 +245,16 @@ function ModalPublicarVersion({
     setError(null);
     setCargando(true);
 
-    // 1. Pedir el número de versión y armar la ruta versionada.
-    const preparacion = await prepararVersionDocumento(documento.id);
-    if (!preparacion.ok) {
-      setError(preparacion.error);
-      setCargando(false);
-      return;
-    }
-
-    // 2. Subir el archivo a esa ruta.
-    const subida = await subirPdfDocumento(preparacion.storagePath, archivo);
-    if (!subida.ok) {
-      setError(subida.error);
-      setCargando(false);
-      return;
-    }
-
-    // 3. Insertar la fila por RPC: el trigger archiva la versión anterior.
-    const publicacion = await publicarVersionDocumento({
-      documentoId: documento.id,
-      version: preparacion.version,
-      storagePath: preparacion.storagePath,
-      nombreArchivo: archivo.name.slice(0, 255),
-      tamanoBytes: archivo.size,
-    });
+    // Número de versión y ruta, subida directa a Storage con el token, y
+    // publicación por RPC (el trigger archiva la versión anterior). El PDF no
+    // pasa por ninguna Server Action: sin tope de 4,5 MB.
+    const nombreArchivo = archivo.name.slice(0, 255);
+    const publicacion = await subirDirecto(
+      archivo,
+      { mimesPermitidos: MIMES_PDF, maximoBytes: MAXIMO_PDF_BYTES },
+      (mime, tamano) => prepararVersionDocumento(documento.id, mime, tamano),
+      (ruta) => publicarVersionDocumento({ documentoId: documento.id, storagePath: ruta, nombreArchivo }),
+    );
     setCargando(false);
 
     if (publicacion.ok) onListo(publicacion.mensaje ?? "Versión publicada.");

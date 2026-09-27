@@ -8,10 +8,11 @@ import {
   guardarSeccionContenido,
   restablecerSeccionContenido,
 } from "@/features/admin/acciones-sitio";
-import type { EdicionSeccion } from "@/features/admin/queries-contenido";
+import type { ClubLogo, EdicionSeccion } from "@/features/admin/queries-contenido";
 import { formatearFechaHora } from "@/lib/utils";
 import { CampoImagenSitio } from "./CampoImagenSitio";
 import { ListaEditable, ListaTextoEditable } from "./ListaEditable";
+import { LogosClubes } from "./LogosClubes";
 import type {
   ClaveContenido,
   EntradaDeportes,
@@ -29,12 +30,16 @@ type Contenido = {
   tienda: EntradaTienda;
 };
 
-const PESTANAS: { valor: ClaveContenido; etiqueta: string }[] = [
+/** "clubes" no es una sección de contenido_sitio: son los logos, que van por su RPC. */
+type Pestana = ClaveContenido | "clubes";
+
+const PESTANAS: { valor: Pestana; etiqueta: string }[] = [
   { valor: "deportes", etiqueta: "Deportes" },
   { valor: "portada", etiqueta: "Portada" },
   { valor: "matriculas", etiqueta: "Matrículas" },
   { valor: "semilleros", etiqueta: "Semilleros" },
   { valor: "tienda", etiqueta: "Tienda" },
+  { valor: "clubes", etiqueta: "Logos de clubes" },
 ];
 
 /**
@@ -56,20 +61,23 @@ const PESTANAS: { valor: ClaveContenido; etiqueta: string }[] = [
 export function SitioAdmin({
   contenidoInicial,
   ediciones,
+  clubes,
 }: {
   contenidoInicial: Contenido;
   ediciones: Record<ClaveContenido, EdicionSeccion>;
+  clubes: ClubLogo[];
 }) {
   const router = useRouter();
-  const [pestana, setPestana] = useState<ClaveContenido>("deportes");
+  const [pestana, setPestana] = useState<Pestana>("deportes");
   const [borrador, setBorrador] = useState<Contenido>(contenidoInicial);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState<{ tono: "exito" | "error"; texto: string } | null>(null);
   const [confirmarRestablecer, setConfirmarRestablecer] = useState(false);
 
-  const edicion = ediciones[pestana];
+  const edicion = pestana === "clubes" ? null : ediciones[pestana];
 
   async function guardar() {
+    if (pestana === "clubes") return;
     setGuardando(true);
     setMensaje(null);
     const resultado = await guardarSeccionContenido(pestana, borrador[pestana]);
@@ -83,6 +91,7 @@ export function SitioAdmin({
   }
 
   async function restablecer() {
+    if (pestana === "clubes") return;
     setGuardando(true);
     const resultado = await restablecerSeccionContenido(pestana);
     setGuardando(false);
@@ -101,11 +110,16 @@ export function SitioAdmin({
         opciones={PESTANAS}
         valor={pestana}
         alCambiar={(valor) => {
-          setPestana(valor as ClaveContenido);
+          setPestana(valor as Pestana);
           setMensaje(null);
         }}
         etiqueta="Sección del sitio"
       >
+        {edicion === null ? (
+          <div className="mt-6">
+            <LogosClubes clubes={clubes} />
+          </div>
+        ) : (
         <div className="mt-6 flex flex-col gap-6">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-gris-borde bg-gris-frio p-4 text-sm text-texto-sec">
             <span>
@@ -168,6 +182,7 @@ export function SitioAdmin({
             </Boton>
           </div>
         </div>
+        )}
       </Tabs>
 
       <Modal

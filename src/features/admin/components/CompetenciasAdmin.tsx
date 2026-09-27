@@ -12,8 +12,10 @@ import {
   guardarCompetencia,
   guardarResultado,
   publicarCompetencia,
-  subirImagenCompetencia,
+  confirmarImagenCompetencia,
+  prepararImagenCompetencia,
 } from "../acciones-contenido";
+import { subirDirecto } from "../subir-directo";
 import { MAXIMO_IMAGEN_BYTES, MIMES_IMAGEN } from "../constantes";
 import type { CompetenciaConResultados, Resultado } from "../types";
 
@@ -261,7 +263,13 @@ function ModalCompetencia({
     if (!archivo || !existente) return;
     setMensajeImagen(null);
     setSubiendoImagen(true);
-    const resultado = await subirImagenCompetencia(existente.id, archivo);
+    const id = existente.id;
+    const resultado = await subirDirecto(
+      archivo,
+      { mimesPermitidos: MIMES_IMAGEN, maximoBytes: MAXIMO_IMAGEN_BYTES },
+      (mime, tamano) => prepararImagenCompetencia(id, mime, tamano),
+      (ruta) => confirmarImagenCompetencia(id, ruta),
+    );
     setSubiendoImagen(false);
     if (resultado.ok) {
       setImagenPath(resultado.imagenPath ?? imagenPath);

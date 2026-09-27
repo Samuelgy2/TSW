@@ -13,7 +13,7 @@ export const MAXIMO_IMAGEN_SITIO_BYTES = 10 * 1024 * 1024;
  * El campo puede traer dos cosas, y hay que distinguirlas:
  *   · un path local, `/imagenes/algo.jpg`, que es el valor de fábrica de
  *     config/contenido.ts y vive en /public;
- *   · una ruta de Storage, `sitio/<uuid>.jpg`, que deja `subirImagenSitio()`
+ *   · una ruta de Storage, `sitio/<uuid>.jpg`, que deja `confirmarImagenSitio()`
  *     cuando el panel sube una foto nueva.
  *
  * Un path local empieza por `/`; una ruta de Storage, no. Con eso alcanza:

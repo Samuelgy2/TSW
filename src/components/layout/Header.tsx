@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
@@ -148,16 +149,27 @@ export function Header({ clubes }: { clubes: ClubMenu[] }) {
           href="/"
           className="flex min-h-[44px] items-center gap-3 font-display text-2xl tracking-tight focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-foco"
         >
-          {/* Hueco del logo de la corporación. Reserva sus medidas desde ya para
-              que la cabecera no se recoloque cuando exista el archivo; el logo
-              de la corporación es del sitio, no de un club, así que no sale de
-              la tabla `club`. Llega con el bucket de logos. */}
-          <span
-            aria-hidden="true"
-            className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-blanco/25 text-[10px] font-normal tracking-normal text-blanco/60 sm:flex"
-          >
-            logo
-          </span>
+          {/* Logo de la corporación (SITIO.logo, un archivo en /public): es del
+              sitio, no de un club, así que no sale de la tabla `club`. Decorativo:
+              el enlace ya se nombra con "TSW". Sin archivo, el hueco reserva sus
+              medidas para que la cabecera no se recoloque cuando llegue. */}
+          {SITIO.logo ? (
+            <Image
+              src={SITIO.logo}
+              alt=""
+              width={40}
+              height={40}
+              priority
+              className="h-10 w-10 shrink-0 object-contain"
+            />
+          ) : (
+            <span
+              aria-hidden="true"
+              className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-blanco/25 text-[10px] font-normal tracking-normal text-blanco/60 sm:flex"
+            >
+              logo
+            </span>
+          )}
           <span className="flex items-center">
             TSW
             <span className="ml-2 hidden text-xs font-normal uppercase tracking-[0.2em] text-blanco/60 sm:inline">

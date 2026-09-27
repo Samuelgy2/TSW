@@ -28,8 +28,10 @@ import {
   alternarVariante,
   guardarProducto,
   guardarVariante,
-  subirImagenProducto,
+  confirmarImagenProducto,
+  prepararImagenProducto,
 } from "../acciones-productos";
+import { subirDirecto } from "../subir-directo";
 
 type ResultadoAccion = { ok: boolean; error?: string; mensaje?: string };
 type VariantesBorrador = {
@@ -328,7 +330,13 @@ function ModalProducto({
     if (!archivo || !existente) return;
     setMensajeImagen(null);
     setSubiendoImagen(true);
-    const resultado = await subirImagenProducto(existente.id, archivo);
+    const id = existente.id;
+    const resultado = await subirDirecto(
+      archivo,
+      { mimesPermitidos: MIMES_IMAGEN, maximoBytes: MAXIMO_IMAGEN_BYTES },
+      (mime, tamano) => prepararImagenProducto(id, mime, tamano),
+      (ruta) => confirmarImagenProducto(id, ruta),
+    );
     setSubiendoImagen(false);
     setMensajeImagen(resultado);
     if (resultado.ok) {

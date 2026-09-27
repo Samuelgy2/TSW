@@ -22,14 +22,10 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
-  experimental: {
-    serverActions: {
-      // Los PDF de matrícula y las fotos entran por Server Actions como File.
-      // El tope por defecto es 1 MB: un PDF escaneado lo supera con facilidad.
-      // Mismo valor que MAXIMO_PDF_BYTES / MAXIMO_IMAGEN_BYTES (constantes.ts).
-      bodySizeLimit: "10mb",
-    },
-  },
+  // Sin `serverActions.bodySizeLimit`: se queda en el 1 MB por defecto. Los
+  // archivos ya no pasan por Server Actions —van directo a Storage con URL
+  // firmada (features/admin/subida-directa.ts)—, y subir el tope no servía de
+  // nada en Vercel, que corta el cuerpo de una función en 4,5 MB igual.
   // Orígenes permitidos para los recursos de /_next/* en desarrollo. Hacen
   // falta cuando el sitio se abre desde otro dispositivo de la red local
   // —el móvil, por ejemplo— en vez de localhost.

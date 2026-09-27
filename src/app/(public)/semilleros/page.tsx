@@ -18,6 +18,7 @@ import { listarClubes } from "@/features/clubes/queries";
 import type { Club } from "@/features/clubes/types";
 import { FichaNiveles } from "@/features/niveles/components/FichaNiveles";
 import { listarNiveles } from "@/features/niveles/queries";
+import { resolverImagenSitio } from "@/features/sitio/imagenes";
 import { obtenerSemilleros } from "@/features/sitio/queries";
 import type { EntradaSemilleros } from "@/features/sitio/schemas";
 import { SelectorClubPublico } from "@/features/publico/components/SelectorClubPublico";
@@ -121,6 +122,7 @@ export default async function PaginaSemilleros({ searchParams }: Props) {
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
           <LogoClub
             nombre={club.nombre}
+            logoUrl={resolverImagenSitio(club.logo_path)}
             color={club.color_identidad}
             tamano="lg"
             oscuro

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { LARGO_CODIGO_ACCESO, MAXIMO_PDF_BYTES } from "./constantes";
+import { LARGO_CODIGO_ACCESO } from "./constantes";
 
 /**
  * Validaciones del lado del servidor para las escrituras del panel.
@@ -104,19 +104,17 @@ export type EntradaDocumento = z.infer<typeof esquemaDocumento>;
  * Publicación de una versión. El archivo llega aparte (FormData); aquí va el
  * resultado de validarlo en el servidor: tamaño y MIME real por firma.
  */
+/**
+ * Sin `version` ni `tamanoBytes`: los decide el servidor. La versión va dentro
+ * de la ruta que firmó `prepararVersionDocumento`, y el tamaño se mide sobre el
+ * archivo ya subido. Lo que manda el navegador de esos dos datos no se usa.
+ */
 export const esquemaPublicarVersion = z.object({
   documentoId: UUID,
-  /** Número que devuelve siguiente_version_documento() antes de subir. */
-  version: z.number().int().min(1),
   nombreArchivo: z.string().min(1).max(255),
-  tamanoBytes: z
-    .number()
-    .int()
-    .min(1, "El archivo está vacío.")
-    .max(MAXIMO_PDF_BYTES, "El PDF supera el tope de 10 MB."),
   storagePath: z
     .string()
-    .regex(/^documentos\/[0-9a-f-]{36}\/v\d+\/.+$/, "La ruta no cumple el formato versionado."),
+    .regex(/^documentos\/[0-9a-f-]{36}\/v\d+\/[0-9a-f-]{36}\.pdf$/, "La ruta no cumple el formato versionado."),
 });
 
 export type EntradaPublicarVersion = z.infer<typeof esquemaPublicarVersion>;
