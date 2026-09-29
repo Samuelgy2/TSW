@@ -3,8 +3,14 @@ import type { Metadata } from "next";
 import { PaginaPanel } from "@/components/admin/PaginaPanel";
 import { SECCIONES_PANEL } from "@/config/panel";
 import { exigirAdminPagina } from "@/lib/auth";
-import { clubesParaPanel, contenidoParaPanel, ultimasEdicionesContenido } from "@/features/admin/queries-contenido";
+import {
+  clubesParaPanel,
+  contenidoParaPanel,
+  deportesParaPanel,
+  ultimasEdicionesContenido,
+} from "@/features/admin/queries-contenido";
 import { listarSlidesCarruselPanel } from "@/features/admin/queries";
+import { deporteActivo } from "@/features/cuenta/deporte-servidor";
 import { SitioAdmin } from "@/features/sitio/components/SitioAdmin";
 
 export const metadata: Metadata = { title: "Contenido del sitio" };
@@ -19,11 +25,13 @@ const SECCION = SECCIONES_PANEL.find((s) => s.href === "/admin/sitio");
  */
 export default async function PaginaSitioPanel() {
   await exigirAdminPagina("/admin/sitio");
-  const [contenidoInicial, ediciones, clubes, slidesCarrusel] = await Promise.all([
+  const [contenidoInicial, ediciones, clubes, slidesCarrusel, deportes, deporte] = await Promise.all([
     contenidoParaPanel(),
     ultimasEdicionesContenido(),
     clubesParaPanel(),
     listarSlidesCarruselPanel(),
+    deportesParaPanel(),
+    deporteActivo(),
   ]);
 
   return (
@@ -33,6 +41,8 @@ export default async function PaginaSitioPanel() {
         ediciones={ediciones}
         clubes={clubes}
         slidesCarrusel={slidesCarrusel}
+        deportes={deportes}
+        deporteSeleccionado={deporte.id}
       />
     </PaginaPanel>
   );

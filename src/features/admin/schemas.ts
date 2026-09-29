@@ -55,6 +55,27 @@ export const esquemaClub = z.object({
 
 export type EntradaClub = z.infer<typeof esquemaClub>;
 
+// --- Deportes (migración 22) ---------------------------------------------------
+
+/**
+ * Lo que el formulario deja editar de un deporte. Sin slug, orden, activo ni
+ * imagen: el slug es inmutable, el orden se relee de la fila, y activo e
+ * imagen tienen su propia RPC (alternar_deporte_activo, establecer_imagen_deporte).
+ * Los tamaños son los del diseño de la tarjeta, no los de la base.
+ */
+export const esquemaDeportePanel = z.object({
+  id: UUID,
+  nombre: z.string().trim().min(1, "El nombre es obligatorio.").max(60, "Máximo 60 caracteres."),
+  categoria: z.string().trim().max(80, "La categoría admite hasta 80 caracteres."),
+  descripcion: z.string().trim().max(600, "La descripción admite hasta 600 caracteres."),
+  puntos: z
+    .array(z.string().trim().max(120, "Cada punto destacado admite hasta 120 caracteres."))
+    .max(6, "Máximo 6 puntos destacados."),
+  pie: z.string().trim().max(120, "El pie de tarjeta admite hasta 120 caracteres."),
+});
+
+export type EntradaDeportePanel = z.infer<typeof esquemaDeportePanel>;
+
 // --- Carrusel de la portada (migración 21) -----------------------------------
 
 export const esquemaSlideCarrusel = z

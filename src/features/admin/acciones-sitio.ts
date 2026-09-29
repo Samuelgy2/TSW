@@ -16,7 +16,13 @@ import {
   type ClaveContenido,
 } from "@/features/sitio/schemas";
 import { ejecutarRpc, revalidarPublico } from "./mutations";
-import { esquemaClub, esquemaReordenarSlidesCarrusel, esquemaSlideCarrusel, type EntradaSlideCarrusel } from "./schemas";
+import {
+  esquemaClub,
+  esquemaDeportePanel,
+  esquemaReordenarSlidesCarrusel,
+  esquemaSlideCarrusel,
+  type EntradaSlideCarrusel,
+} from "./schemas";
 import {
   descartarSubida,
   extensionDe,
@@ -35,12 +41,13 @@ function mensajeDe(error: unknown): string {
   return "No se pudo guardar. Inténtalo de nuevo en un momento.";
 }
 
-// Los deportes ya viven en la tabla `deporte` (migración 22). Mientras el panel
-// no tenga su formulario nuevo, guardar la sección escribiría en un JSON que
-// nadie lee y parecería que funcionó. Bloque TEMPORAL; sin `export` porque este
-// archivo es "use server" (verificar:use-server).
+// Los deportes viven en la tabla `deporte` (migración 22), no en contenido_sitio.
+// La clave 'deportes' sigue existiendo en el CHECK y en los tipos hasta la
+// migración que borra el respaldo, pero escribirla aquí guardaría en un JSON que
+// nadie lee y parecería que funcionó. Sin `export` porque este archivo es
+// "use server" (verificar:use-server).
 const DEPORTES_EN_MIGRACION: ClaveContenido = "deportes";
-const MENSAJE_DEPORTES_EN_MIGRACION = "Los deportes están en migración: la edición vuelve en breve.";
+const MENSAJE_DEPORTES_EN_MIGRACION = "Los deportes se editan desde la pestaña Deportes, uno por uno.";
 
 /**
  * Guarda una sección completa: reemplazo total, igual que el resto de los
@@ -220,6 +227,122 @@ export async function quitarLogoClub(id: string): Promise<ResultadoEscritura> {
     await ejecutarRpc("establecer_logo_club", { p_id: id, p_logo_path: "" });
     revalidarPublico("club");
     return { ok: true, mensaje: "Logo quitado." };
+  } catch (error) {
+    return { ok: false, error: mensajeDe(error) };
+  }
+}
+
+// --- Deportes (migración 22) ---------------------------------------------------
+
+/**
+ * El selector del panel (nombres, marca "· inactivo") vive en el layout del
+ * panel, y el hero, las tarjetas y el carrusel en la portada: cualquier cambio
+ * de un deporte revalida ambos.
+ */
+function revalidarDeportes() {
+  revalidarPublico("deporte");
+  revalidatePath("/admin", "layout");
+}
+
+/**
+ * Guarda los datos editables de un deporte por `guardar_deporte`. Reemplazo
+ * total, pero el formulario no expone el orden: se relee de la fila y se
+ * reenvía. El slug no viaja (inmutable), y `activo` e imagen tienen su RPC.
+ */
+export async function guardarDeporte(entrada: unknown): Promise<ResultadoEscritura> {
+  const datos = esquemaDeportePanel.safeParse(entrada);
+  if (!datos.success) return { ok: false, error: datos.error.issues[0]?.message ?? "Revisa los datos." };
+
+  try {
+    await exigirAdmin();
+    const d = datos.data;
+
+    const supabase = await crearClienteServidor();
+    const { data: actual, error } = await supabase.from("deporte").select("orden").eq("id", d.id).maybeSingle();
+    if (error) throw error;
+    if (!actual) return { ok: false, error: "El deporte no existe." };
+
+    await ejecutarRpc("guardar_deporte", {
+      p_id: d.id,
+      p_nombre: d.nombre,
+      p_categoria: d.categoria,
+      p_descripcion: d.descripcion,
+      p_puntos: d.puntos,
+      p_pie: d.pie,
+      p_orden: actual.orden,
+    });
+    revalidarDeportes();
+    return { ok: true, mensaje: "Deporte guardado." };
+  } catch (error) {
+    return { ok: false, error: mensajeDe(error) };
+  }
+}
+
+/**
+ * Desactiva o reactiva un deporte. La regla "no se puede desactivar el último
+ * activo" vive en la RPC (con el lock que hace fiable el conteo): su mensaje ya
+ * viene en español y `traducirErrorPostgres` lo devuelve tal cual.
+ */
+export async function alternarDeporte(id: string, activo: boolean): Promise<ResultadoEscritura> {
+  try {
+    if (!UUID.test(id)) return { ok: false, error: "Deporte inválido." };
+    await ejecutarRpc("alternar_deporte_activo", { p_id: id, p_activo: activo });
+    revalidarDeportes();
+    return { ok: true, mensaje: activo ? "Deporte activado." : "Deporte desactivado." };
+  } catch (error) {
+    return { ok: false, error: mensajeDe(error) };
+  }
+}
+
+export async function prepararImagenDeporte(id: string, mime: string, tamano: number): Promise<SubidaPreparada> {
+  try {
+    await exigirAdmin();
+    if (!UUID.test(id)) return { ok: false, error: "Deporte inválido." };
+    const invalido = validarDeclarado(mime, tamano, OPCIONES_IMAGEN_SITIO);
+    if (invalido) return { ok: false, error: invalido };
+
+    const ruta = `deportes/${crypto.randomUUID()}.${extensionDe(mime)}`;
+    return { ok: true, bucket: BUCKET_SITIO, ruta, token: await firmarSubida(BUCKET_SITIO, ruta) };
+  } catch (error) {
+    return { ok: false, error: mensajeDe(error) };
+  }
+}
+
+/**
+ * Paso 3 de la foto de un deporte: verifica el archivo y, solo entonces, lo fija
+ * con `establecer_imagen_deporte`, el único camino por el que cambia. Si la RPC
+ * falla, el archivo se borra: en un bucket público un archivo sin fila no está
+ * huérfano, está publicado.
+ */
+export async function confirmarImagenDeporte(id: string, ruta: string): Promise<ResultadoEscritura & { ruta?: string }> {
+  try {
+    await exigirAdmin();
+    if (!UUID.test(id)) return { ok: false, error: "Deporte inválido." };
+    if (!/^deportes\/[0-9a-f-]{36}\.(jpg|png|webp)$/.test(ruta)) return { ok: false, error: "Ruta de imagen inválida." };
+
+    const verificada = await verificarSubida(BUCKET_SITIO, ruta, OPCIONES_IMAGEN_SITIO);
+    if (!verificada.ok) return verificada;
+
+    try {
+      await ejecutarRpc("establecer_imagen_deporte", { p_id: id, p_imagen_path: ruta });
+    } catch (error) {
+      await descartarSubida(BUCKET_SITIO, ruta);
+      throw error;
+    }
+    revalidarDeportes();
+    return { ok: true, mensaje: "Foto cargada.", ruta };
+  } catch (error) {
+    return { ok: false, error: mensajeDe(error) };
+  }
+}
+
+/** Quita la foto: la tarjeta vuelve al marcador. El archivo se queda en el bucket (la bitácora conserva la ruta). */
+export async function quitarImagenDeporte(id: string): Promise<ResultadoEscritura> {
+  try {
+    if (!UUID.test(id)) return { ok: false, error: "Deporte inválido." };
+    await ejecutarRpc("establecer_imagen_deporte", { p_id: id, p_imagen_path: "" });
+    revalidarDeportes();
+    return { ok: true, mensaje: "Foto quitada." };
   } catch (error) {
     return { ok: false, error: mensajeDe(error) };
   }

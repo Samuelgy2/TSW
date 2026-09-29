@@ -3,7 +3,7 @@ import "server-only";
 import { exigirAdmin } from "@/lib/auth";
 import { crearClienteServidor } from "@/lib/supabase/server";
 import { CLAVES_CONTENIDO, type ClaveContenido } from "@/features/sitio/schemas";
-import { obtenerDeportes, obtenerMatriculas, obtenerPortada, obtenerSemilleros, obtenerTienda } from "@/features/sitio/queries";
+import { obtenerMatriculas, obtenerPortada, obtenerSemilleros, obtenerTienda } from "@/features/sitio/queries";
 import { nombresDeActores } from "./queries-perfiles";
 
 /**
@@ -82,14 +82,44 @@ export async function ultimasEdicionesContenido(): Promise<Record<ClaveContenido
  */
 export async function contenidoParaPanel() {
   await exigirAdmin();
-  const [deportes, portada, matriculas, semilleros, tienda] = await Promise.all([
-    obtenerDeportes(),
+  // Los deportes ya no son una sección de contenido_sitio: ver deportesParaPanel.
+  const [portada, matriculas, semilleros, tienda] = await Promise.all([
     obtenerPortada(),
     obtenerMatriculas(),
     obtenerSemilleros(),
     obtenerTienda(),
   ]);
-  return { deportes, portada, matriculas, semilleros, tienda };
+  return { portada, matriculas, semilleros, tienda };
+}
+
+export type DeportePanel = {
+  id: string;
+  slug: string;
+  nombre: string;
+  categoria: string;
+  descripcion: string;
+  puntos: string[];
+  pie: string;
+  imagen_path: string | null;
+  activo: boolean;
+  orden: number;
+};
+
+/**
+ * Todos los deportes, activos o no, para la pestaña "Deportes". Con la sesión
+ * del administrador: la política de lectura con sesión deja ver también los
+ * desactivados (migración 22).
+ */
+export async function deportesParaPanel(): Promise<DeportePanel[]> {
+  await exigirAdmin();
+  const supabase = await crearClienteServidor();
+  const { data, error } = await supabase
+    .from("deporte")
+    .select("id, slug, nombre, categoria, descripcion, puntos, pie, imagen_path, activo, orden")
+    .order("orden", { ascending: true })
+    .order("creado_en", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
 }
 
 export type ClubPanel = {

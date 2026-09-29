@@ -8,16 +8,16 @@ import {
   guardarSeccionContenido,
   restablecerSeccionContenido,
 } from "@/features/admin/acciones-sitio";
-import type { ClubPanel, EdicionSeccion } from "@/features/admin/queries-contenido";
+import type { ClubPanel, DeportePanel, EdicionSeccion } from "@/features/admin/queries-contenido";
 import { formatearFechaHora } from "@/lib/utils";
 import { CampoImagenSitio } from "./CampoImagenSitio";
 import { ListaEditable, ListaTextoEditable } from "./ListaEditable";
 import { ClubesAdmin } from "./ClubesAdmin";
 import { CarruselAdmin } from "./CarruselAdmin";
+import { DeportesAdmin } from "./DeportesAdmin";
 import type { SlideCarrusel } from "@/features/carrusel/types";
 import type {
   ClaveContenido,
-  EntradaDeportes,
   EntradaMatriculas,
   EntradaPortada,
   EntradaSemilleros,
@@ -25,14 +25,17 @@ import type {
 } from "../schemas";
 
 type Contenido = {
-  deportes: EntradaDeportes;
   portada: EntradaPortada;
   matriculas: EntradaMatriculas;
   semilleros: EntradaSemilleros;
   tienda: EntradaTienda;
 };
 
-/** "clubes" y "carrusel" no son secciones de contenido_sitio: tablas propias con sus propias RPC. */
+/**
+ * "clubes", "carrusel" y "deportes" no son secciones de contenido_sitio: tablas
+ * propias con sus propias RPC. ("deportes" sigue siendo una ClaveContenido
+ * hasta la migración que borra el respaldo del JSON; aquí ya no se edita.)
+ */
 type Pestana = ClaveContenido | "clubes" | "carrusel";
 
 const PESTANAS: { valor: Pestana; etiqueta: string }[] = [
@@ -48,7 +51,8 @@ const PESTANAS: { valor: Pestana; etiqueta: string }[] = [
 /**
  * Pantalla de contenido editable del sitio (migración 19, contenido_sitio).
  *
- * Cinco secciones en pestañas. Cada una:
+ * Cuatro secciones de contenido en pestañas (más Deportes, Clubes y Carrusel,
+ * que tienen tabla propia). Cada sección de contenido:
  *  · muestra quién la editó por última vez y cuándo, leído de la bitácora
  *    (features/admin/queries-contenido.ts), o que sigue en el valor de fábrica;
  *  · se guarda ENTERA con "Guardar sección" — reemplazo total, como todo
@@ -66,11 +70,16 @@ export function SitioAdmin({
   ediciones,
   clubes,
   slidesCarrusel,
+  deportes,
+  deporteSeleccionado,
 }: {
   contenidoInicial: Contenido;
   ediciones: Record<ClaveContenido, EdicionSeccion>;
   clubes: ClubPanel[];
   slidesCarrusel: SlideCarrusel[];
+  deportes: DeportePanel[];
+  /** Slug del deporte elegido en el selector del panel, o "todos". */
+  deporteSeleccionado: string;
 }) {
   const router = useRouter();
   const [pestana, setPestana] = useState<Pestana>("deportes");
@@ -79,14 +88,11 @@ export function SitioAdmin({
   const [mensaje, setMensaje] = useState<{ tono: "exito" | "error"; texto: string } | null>(null);
   const [confirmarRestablecer, setConfirmarRestablecer] = useState(false);
 
-  const esTablaPropia = pestana === "clubes" || pestana === "carrusel";
+  const esTablaPropia = pestana === "clubes" || pestana === "carrusel" || pestana === "deportes";
   const edicion = esTablaPropia ? null : ediciones[pestana];
-  // TEMPORAL: los deportes ya viven en la tabla `deporte`; esta pestaña todavía
-  // escribe en el JSON viejo, que nadie lee. Se bloquea hasta el formulario nuevo.
-  const enMigracion = pestana === "deportes";
 
   async function guardar() {
-    if (esTablaPropia || enMigracion) return;
+    if (esTablaPropia) return;
     setGuardando(true);
     setMensaje(null);
     const resultado = await guardarSeccionContenido(pestana, borrador[pestana]);
@@ -126,7 +132,9 @@ export function SitioAdmin({
       >
         {edicion === null ? (
           <div className="mt-6">
-            {pestana === "clubes" ? <ClubesAdmin clubes={clubes} /> : <CarruselAdmin slides={slidesCarrusel} />}
+            {pestana === "clubes" && <ClubesAdmin clubes={clubes} />}
+            {pestana === "carrusel" && <CarruselAdmin slides={slidesCarrusel} />}
+            {pestana === "deportes" && <DeportesAdmin deportes={deportes} seleccionado={deporteSeleccionado} />}
           </div>
         ) : (
         <div className="mt-6 flex flex-col gap-6">
@@ -146,26 +154,14 @@ export function SitioAdmin({
               variante="fantasma"
               tamano="sm"
               onClick={() => setConfirmarRestablecer(true)}
-              disabled={!edicion.personalizada || guardando || enMigracion}
+              disabled={!edicion.personalizada || guardando}
             >
               Restablecer al valor por defecto
             </Boton>
           </div>
 
-          {enMigracion && (
-            <Aviso tono="aviso" titulo="Deportes en migración">
-              Los deportes pasaron a una tabla propia y la edición vuelve en breve. Mientras tanto no se puede guardar
-              desde aquí: lo que se ve en el sitio no cambia.
-            </Aviso>
-          )}
           {mensaje && <Aviso tono={mensaje.tono}>{mensaje.texto}</Aviso>}
 
-          {pestana === "deportes" && (
-            <FormularioDeportes
-              valor={borrador.deportes}
-              alCambiar={(valor) => setBorrador((b) => ({ ...b, deportes: valor }))}
-            />
-          )}
           {pestana === "portada" && (
             <FormularioPortada
               valor={borrador.portada}
@@ -192,7 +188,7 @@ export function SitioAdmin({
           )}
 
           <div className="flex justify-end border-t border-gris-borde pt-4">
-            <Boton onClick={guardar} cargando={guardando} disabled={enMigracion}>
+            <Boton onClick={guardar} cargando={guardando}>
               Guardar sección
             </Boton>
           </div>
@@ -219,72 +215,6 @@ export function SitioAdmin({
           recuperar lo que había, tendrías que volver a escribirlo.
         </p>
       </Modal>
-    </div>
-  );
-}
-
-// --- Deportes ------------------------------------------------------------------
-
-function FormularioDeportes({
-  valor,
-  alCambiar,
-}: {
-  valor: EntradaDeportes;
-  alCambiar: (valor: EntradaDeportes) => void;
-}) {
-  function actualizarUno(indice: number, cambios: Partial<EntradaDeportes[number]>) {
-    alCambiar(valor.map((d, i) => (i === indice ? { ...d, ...cambios } : d)));
-  }
-
-  return (
-    <div className="flex flex-col gap-6">
-      {valor.map((deporte, indice) => (
-        <div key={deporte.id} className="rounded-lg border border-gris-borde bg-blanco p-4">
-          <p className="mb-3 text-xs font-bold uppercase tracking-wide text-texto-sec">
-            Deporte: {deporte.id}
-          </p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Campo
-              etiqueta="Nombre"
-              value={deporte.nombre}
-              onChange={(e) => actualizarUno(indice, { nombre: e.target.value })}
-            />
-            <Campo
-              etiqueta="Categoría (etiqueta corta sobre la foto)"
-              value={deporte.categoria}
-              onChange={(e) => actualizarUno(indice, { categoria: e.target.value })}
-            />
-          </div>
-          <div className="mt-3">
-            <Campo
-              etiqueta="Descripción"
-              value={deporte.descripcion}
-              onChange={(e) => actualizarUno(indice, { descripcion: e.target.value })}
-            />
-          </div>
-          <div className="mt-3">
-            <ListaTextoEditable
-              etiqueta="Puntos destacados"
-              items={deporte.puntos}
-              alCambiar={(puntos) => actualizarUno(indice, { puntos })}
-            />
-          </div>
-          <div className="mt-3">
-            <Campo
-              etiqueta="Pie de tarjeta"
-              value={deporte.pie}
-              onChange={(e) => actualizarUno(indice, { pie: e.target.value })}
-            />
-          </div>
-          <div className="mt-3">
-            <CampoImagenSitio
-              etiqueta="Foto"
-              valor={deporte.imagen}
-              alCambiar={(imagen) => actualizarUno(indice, { imagen })}
-            />
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
