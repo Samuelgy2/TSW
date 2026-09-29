@@ -87,8 +87,11 @@ export default function PaginaLaboratorio() {
           Carrusel del hero
         </SeccionTitulo>
         <p className="mt-3 text-sm text-texto-sec">
-          Ya no se usa en la portada (el rediseño la abre con HeroPortal, texto y tarjeta de deportes). Se
-          conserva aquí por si el club lo quiere de vuelta; si no, se elimina con Hero.tsx.
+          De vuelta en la portada desde la migración 21, fusionado dentro de{" "}
+          <code className="font-mono">HeroPortal</code> como fondo del hero completo (editable desde
+          /admin/sitio). Este primitivo casi no cambió: solo ganó <code className="font-mono">alCambiarIndice</code>
+          {" "}y un <code className="font-mono">h-full</code> en la pista, para que un texto de fuera pueda
+          sincronizarse con la imagen activa.
         </p>
       </Seccion>
       <Hero />

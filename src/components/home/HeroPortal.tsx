@@ -1,46 +1,143 @@
-import Link from "next/link";
+"use client";
 
-import { Badge, Boton } from "@/components/ui";
+import Image from "next/image";
+import Link from "next/link";
+import { useState } from "react";
+
+import { AnimatePresence, motion, SUAVIZADO, useMovimientoReducido } from "@/lib/animaciones";
+import { Badge, Boton, Carrusel } from "@/components/ui";
 import { SITIO } from "@/config/sitio";
+import type { SlideCarrusel } from "@/features/carrusel/types";
+import { resolverImagenSitio } from "@/features/sitio/imagenes";
 import type { EntradaDeportes, EntradaPortada } from "@/features/sitio/schemas";
 
 /**
- * Portada de la corporación: texto y dos CTAs a la izquierda, tarjeta con los
- * deportes a la derecha (en móvil, debajo). Server Component sin foto a
- * sangre: el peso visual lo ponen el titular y la tarjeta, y así el LCP es
- * texto. Reemplaza al carrusel, que sigue en /laboratorio por si el club lo
- * quiere de vuelta.
+ * Portada de la corporación, fusionada con el carrusel editable (migración 21):
+ * ya no son dos secciones apiladas, es una sola. La imagen del slide activo es
+ * el fondo de TODO el hero (con degradado para el contraste del texto); título,
+ * descripción y botón del slide reemplazan el texto fijo, con fundido
+ * sincronizado al cambio de imagen. `Carrusel` sigue siendo la base de la
+ * navegación —scroll-snap, flechas, indicadores, pausa, swipe, foco—, sin
+ * reescribirla: solo se le añadió `alCambiarIndice` (Carrusel.tsx) para que
+ * este componente sepa qué diapositiva está activa y le sincronice el texto.
  *
- * `deportes` y `portada` llegan como props, ya resueltos por
- * `obtenerDeportes()`/`obtenerPortada()` en la página: contenido editable
- * desde /admin/sitio (migración 19), con el valor de config/contenido.ts como
- * respaldo si nadie lo ha personalizado.
+ * Elementos que NO vienen de `carrusel_slide` y se quedan fijos, superpuestos
+ * sobre la imagen que cambia: los dos Badge, la tarjeta "Deportes de la
+ * corporación" y la línea de aval ("Reconocimiento deportivo..."). Decisión
+ * explícita de Samuel, no mía.
+ *
+ * Sin diapositivas activas: fondo azul profundo liso (el de siempre) y el
+ * texto de fábrica (`SITIO.nombreLargo` / `portada.presentacion` / los dos
+ * botones). Ni el layout ni el resto del hero cambian de forma según haya o
+ * no slides ni según `prefers-reduced-motion` — lo único que varía son las
+ * props de animación (regla de `lib/animaciones`).
  */
-export function HeroPortal({ deportes, portada }: { deportes: EntradaDeportes; portada: EntradaPortada }) {
+export function HeroPortal({
+  deportes,
+  portada,
+  slides,
+}: {
+  deportes: EntradaDeportes;
+  portada: EntradaPortada;
+  slides: SlideCarrusel[];
+}) {
+  const reducido = useMovimientoReducido();
+  const [indiceActivo, setIndiceActivo] = useState(0);
+  // Foco en cualquier parte del hero (CTA, tarjeta de deportes): el slide no
+  // debe rotar y desmontar el botón enfocado. Carrusel ya cubre su propio foco.
+  const [focoEnHero, setFocoEnHero] = useState(false);
+
+  const tieneSlides = slides.length > 0;
+  const activo = tieneSlides ? (slides[indiceActivo] ?? slides[0]) : null;
+
   return (
-    <div className="bg-azul-profundo text-blanco">
-      <div className="contenedor grid gap-8 py-12 sm:py-16 lg:grid-cols-[3fr_2fr] lg:items-start lg:gap-12 lg:py-20">
+    <div
+      className="relative isolate min-h-[440px] overflow-hidden bg-azul-profundo text-blanco sm:min-h-[520px] lg:min-h-[600px]"
+      onFocusCapture={() => setFocoEnHero(true)}
+      onBlurCapture={(evento) => {
+        if (!evento.currentTarget.contains(evento.relatedTarget as Node | null)) setFocoEnHero(false);
+      }}
+    >
+      {tieneSlides && (
+        <>
+          <div className="absolute inset-0">
+            <Carrusel
+              diapositivas={slides.map((slide, indice) => ({
+                id: slide.id,
+                nombre: slide.titulo,
+                contenido: <ImagenFondoSlide slide={slide} prioridad={indice === 0} />,
+              }))}
+              etiqueta="Destacados de la corporación"
+              className="h-full"
+              claseDiapositiva="h-full"
+              sobreOscuro
+              alCambiarIndice={setIndiceActivo}
+              pausado={focoEnHero}
+              zonasToque
+            />
+          </div>
+          {/* Degradado para que el texto tenga AA sobre cualquier foto que suba
+              el club, sin depender de qué tan oscura sea. pointer-events-none:
+              no debe robarle clics a los controles del carrusel ni a los CTA. */}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-azul-profundo via-azul-profundo/70 to-azul-profundo/25" />
+        </>
+      )}
+
+      {/* pointer-events-none: esta caja puede terminar solapando, sin verse,
+          la barra de indicadores/flechas del carrusel (absoluta al hero
+          entero, no a este grid) cuando el texto de un slide es corto y deja
+          hueco debajo. Sin este corte, ese hueco transparente le robaría los
+          clics al carrusel aunque no se note a simple vista. Se reactiva a
+          mano en los dos hijos que sí tienen algo clicable. */}
+      <div className="contenedor relative grid gap-8 py-12 pointer-events-none sm:py-16 lg:grid-cols-[3fr_2fr] lg:items-start lg:gap-12 lg:py-20">
         <div>
           <div className="flex flex-wrap gap-2">
             <Badge tono="solido">{portada.etiquetaEntidad}</Badge>
             <Badge tono="claro">{deportes.map((d) => d.nombre).join(" · ")}</Badge>
           </div>
-          <h1 className="titulo-hero mt-5">{SITIO.nombreLargo}</h1>
-          <p className="mt-4 max-w-xl text-lg text-blanco/85 sm:text-xl">{portada.presentacion}</p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Boton href="/matriculas" tamano="lg">
-              Ver matrículas
-            </Boton>
-            <Boton href="/semilleros" tamano="lg" variante="secundario" fondo="oscuro">
-              Conocer los semilleros
-            </Boton>
-          </div>
+
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={activo?.id ?? "estatico"}
+              initial={reducido ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={reducido ? undefined : { opacity: 0 }}
+              transition={{ duration: reducido ? 0 : 0.35, ease: SUAVIZADO }}
+            >
+              <h1 className="titulo-hero mt-5">{activo ? activo.titulo : SITIO.nombreLargo}</h1>
+              {(activo ? activo.descripcion : portada.presentacion) && (
+                <p className="mt-4 max-w-xl text-lg text-blanco/85 sm:text-xl">
+                  {activo ? activo.descripcion : portada.presentacion}
+                </p>
+              )}
+              <div className="pointer-events-auto mt-8 flex flex-col gap-3 sm:flex-row">
+                {activo ? (
+                  activo.etiqueta_enlace &&
+                  activo.destino_enlace && (
+                    <Boton href={activo.destino_enlace} tamano="lg">
+                      {activo.etiqueta_enlace}
+                    </Boton>
+                  )
+                ) : (
+                  <>
+                    <Boton href="/matriculas" tamano="lg">
+                      Ver matrículas
+                    </Boton>
+                    <Boton href="/semilleros" tamano="lg" variante="secundario" fondo="oscuro">
+                      Conocer los semilleros
+                    </Boton>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </AnimatePresence>
+
           <p className="mt-6 text-sm text-blanco/60">{portada.aval}</p>
         </div>
 
         <section
           aria-labelledby="titulo-hero-deportes"
-          className="rounded-lg border border-blanco/15 bg-azul-medio p-5 sm:p-6"
+          className="pointer-events-auto rounded-lg border border-blanco/15 bg-azul-medio p-5 sm:p-6"
         >
           <h2 id="titulo-hero-deportes" className="text-xs font-bold uppercase tracking-[0.2em] text-blanco/70">
             Deportes de la corporación
@@ -70,4 +167,10 @@ export function HeroPortal({ deportes, portada }: { deportes: EntradaDeportes; p
       </div>
     </div>
   );
+}
+
+function ImagenFondoSlide({ slide, prioridad }: { slide: SlideCarrusel; prioridad: boolean }) {
+  const url = resolverImagenSitio(slide.imagen_path);
+  if (!url) return null;
+  return <Image src={url} alt="" fill sizes="100vw" priority={prioridad} className="object-cover" />;
 }

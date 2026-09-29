@@ -31,6 +31,26 @@ export type CarruselProps = {
   claseDiapositiva?: string;
   /** Controles sobre fondo oscuro (blanco) o claro (azul profundo). */
   sobreOscuro?: boolean;
+  /**
+   * Se llama cada vez que cambia la diapositiva activa (por scroll, flecha,
+   * indicador o avance automático). Existe para el modo "hero de fondo"
+   * (HeroPortal): un texto fuera de este componente necesita saber cuál
+   * imagen está activa para hacerle un fundido sincronizado.
+   */
+  alCambiarIndice?: (indice: number) => void;
+  /**
+   * Detiene el avance automático desde fuera. HeroPortal lo usa cuando el foco
+   * está en el texto/CTA del hero: si el slide rotara ahí, el botón enfocado
+   * se desmontaría bajo el teclado (WCAG 2.2.2 / 3.2.1).
+   */
+  pausado?: boolean;
+  /**
+   * Modo "historias": clic/toque en la mitad izquierda de la pista retrocede y
+   * en la derecha avanza. Las flechas siguen en el DOM como botones reales
+   * (Tab, lector de pantalla, ← →) pero invisibles hasta recibir foco. El
+   * deslizamiento táctil sigue siendo el scroll nativo de la pista.
+   */
+  zonasToque?: boolean;
 };
 
 /**
@@ -54,6 +74,9 @@ export function Carrusel({
   className,
   claseDiapositiva,
   sobreOscuro = true,
+  alCambiarIndice,
+  pausado = false,
+  zonasToque = false,
 }: CarruselProps) {
   const base = useId();
   const pista = useRef<HTMLDivElement>(null);
@@ -78,6 +101,7 @@ export function Carrusel({
     activoPorUsuario &&
     !cursorDentro &&
     !focoDentro &&
+    !pausado &&
     pestanaVisible;
 
   /** Desplaza la pista hasta la diapositiva pedida, con ciclo en los extremos. */
@@ -133,6 +157,10 @@ export function Carrusel({
     return () => window.clearInterval(temporizador);
   }, [rotando, indice, intervaloMs, ir]);
 
+  useEffect(() => {
+    alCambiarIndice?.(indice);
+  }, [indice, alCambiarIndice]);
+
   function alTeclear(evento: KeyboardEvent<HTMLElement>) {
     if (evento.key === "ArrowRight") {
       evento.preventDefault();
@@ -150,6 +178,10 @@ export function Carrusel({
   const BOTON_CONTROL =
     "flex h-11 w-11 items-center justify-center rounded-full border-2 transition-colors " +
     "focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-foco";
+
+  // Invisibles y sin capturar puntero (el clic lo resuelve la pista), pero
+  // focuseables y anunciados; al enfocarse aparecen con su anillo de foco.
+  const ZONAS_FLECHA = "flex pointer-events-none opacity-0 focus-visible:opacity-100";
 
   return (
     <section
@@ -169,7 +201,25 @@ export function Carrusel({
         ref={pista}
         id={`${base}-pista`}
         aria-live={rotando ? "off" : "polite"}
-        className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        // h-full: sin efecto en el modo "tarjetas" (el alto lo da claseDiapositiva
+        // en unidades fijas, y con un ancestro de alto indefinido un alto en
+        // porcentaje se computa como auto — CSS 2.1 §10.5). Con efecto real en
+        // el modo "hero de fondo" (HeroPortal): ahí el contenedor SÍ tiene un
+        // alto definido —absolute inset-0 dentro de una sección con contenido—
+        // y esta clase es lo que permite que claseDiapositiva="h-full" llegue
+        // a las diapositivas.
+        // Un clic (no un arrastre: ese no dispara click) se resuelve por mitades.
+        // Sin rol ni tabIndex a propósito: el equivalente accesible son los
+        // botones de flecha y las teclas ← →; esto es solo un atajo de puntero.
+        onClick={
+          zonasToque
+            ? (evento) => {
+                const caja = evento.currentTarget.getBoundingClientRect();
+                ir(evento.clientX < caja.left + caja.width / 2 ? indice - 1 : indice + 1);
+              }
+            : undefined
+        }
+        className="flex h-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {diapositivas.map((diapositiva, i) => (
           <div
@@ -197,7 +247,8 @@ export function Carrusel({
             className={cn(
               BOTON_CONTROL,
               colorControl,
-              "absolute left-4 top-1/2 hidden -translate-y-1/2 sm:flex lg:left-6",
+              "absolute left-4 top-1/2 -translate-y-1/2 lg:left-6",
+              zonasToque ? ZONAS_FLECHA : "hidden sm:flex",
             )}
           >
             <span aria-hidden="true" className="text-2xl leading-none">
@@ -212,7 +263,8 @@ export function Carrusel({
             className={cn(
               BOTON_CONTROL,
               colorControl,
-              "absolute right-4 top-1/2 hidden -translate-y-1/2 sm:flex lg:right-6",
+              "absolute right-4 top-1/2 -translate-y-1/2 lg:right-6",
+              zonasToque ? ZONAS_FLECHA : "hidden sm:flex",
             )}
           >
             <span aria-hidden="true" className="text-2xl leading-none">

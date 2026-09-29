@@ -12,6 +12,7 @@ import {
 import { BloqueCTA, Boton } from "@/components/ui";
 import { SITIO } from "@/config/sitio";
 
+import { listarSlidesCarrusel } from "@/features/carrusel/queries";
 import { listarCompetenciasConResultados } from "@/features/competencias/queries";
 import { UltimosResultados } from "@/features/competencias/components/UltimosResultados";
 import { listarDocumentosPublicados } from "@/features/matriculas/queries";
@@ -31,16 +32,17 @@ export const metadata: Metadata = {
  * /semilleros y /tienda, a un clic desde las tarjetas de deporte y el menú.
  */
 export default async function PaginaInicio() {
-  const [competencias, documentos, deportes, portada] = await Promise.all([
+  const [competencias, documentos, deportes, portada, slidesCarrusel] = await Promise.all([
     listarCompetenciasConResultados(),
     listarDocumentosPublicados(),
     obtenerDeportes(),
     obtenerPortada(),
+    listarSlidesCarrusel(),
   ]);
 
   return (
     <>
-      <HeroPortal deportes={deportes} portada={portada} />
+      <HeroPortal deportes={deportes} portada={portada} slides={slidesCarrusel} />
       <CifrasPortal portada={portada} />
       <PilaresPortal portada={portada} />
       <DeportesPortal deportes={deportes} portada={portada} />
