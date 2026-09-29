@@ -1,0 +1,186 @@
+-- ---------------------------------------------------------------------------
+-- BORRADOR PARA REVISAR — NO APLICAR SIN DECISIÓN EXPRESA.
+--
+-- Reversa de las migraciones 22 (deporte) y 23 (carrusel_deporte).
+--
+-- Vive FUERA de supabase/migrations a propósito y con extensión .borrador: un
+-- `supabase db push` solo aplica lo que hay en migrations/, así que este
+-- archivo no se ejecuta por accidente. Si hay que usarlo, se copia a
+-- supabase/migrations con un timestamp posterior a la 23 y se aplica con
+-- `supabase db push` desde la terminal de Samuel. Reversa hacia ADELANTE, nunca
+-- editando la historia ni con `db reset` en el remoto.
+--
+-- Antes de aplicar:
+--   1. Redesplegar en Vercel el código anterior a la fase de deportes (el
+--      actual llama a guardar_slide_carrusel con p_deporte_id y lee la tabla).
+--   2. Comparar con scripts/tmp/volcado-pre-deporte-2026-09-29.json.
+--
+-- Qué se pierde, y qué no:
+--   · deporte_id de cada diapositiva (la columna desaparece). Se avisa abajo.
+--   · El ESTADO activo/inactivo de cada deporte: el JSON no lo tiene. Un
+--     deporte desactivado REAPARECERÁ en el sitio tras la reversa. Se avisa.
+--   · Las ediciones de deportes hechas después de la 22 NO se pierden: se
+--     reescriben en contenido_sitio (clave 'deportes') desde la tabla, en
+--     lugar de volver a los valores de antes.
+--   · Archivos de Storage: no se movió ninguno, no hay nada que deshacer.
+--   · Eventos de bitácora de deporte: se quedan (la bitácora es inmutable).
+-- ---------------------------------------------------------------------------
+
+-- --- 0. Avisos -----------------------------------------------------------------
+
+do $$
+declare
+  v_etiquetadas integer;
+  v_inactivos   integer;
+begin
+  select count(*) into v_etiquetadas from public.carrusel_slide where deporte_id is not null;
+  select count(*) into v_inactivos   from public.deporte where not activo;
+
+  if v_etiquetadas > 0 then
+    raise notice 'Reversa: % diapositiva(s) pierden su etiqueta de deporte.', v_etiquetadas;
+  end if;
+  if v_inactivos > 0 then
+    raise notice 'Reversa: % deporte(s) inactivo(s) volverán a verse en el sitio (el JSON no guarda el estado).', v_inactivos;
+  end if;
+end;
+$$;
+
+-- --- 1. Volver a guardar los deportes en contenido_sitio ------------------------
+--
+-- Sin filas no se escribe nada (el HAVING deja el SELECT vacío): la clave
+-- conserva lo que tuviera, que es el respaldo que dejó la 22.
+
+insert into public.contenido_sitio (clave, valor)
+select 'deportes',
+       jsonb_agg(
+         jsonb_build_object(
+           'id', slug,
+           'nombre', nombre,
+           'categoria', categoria,
+           'descripcion', descripcion,
+           'puntos', to_jsonb(puntos),
+           'imagen', imagen_path,
+           'pie', pie
+         )
+         order by orden, creado_en
+       )
+  from public.deporte
+having count(*) > 0
+on conflict (clave) do update
+  set valor          = excluded.valor,
+      actualizado_en = now();
+
+-- --- 2. Deshacer la 23 ----------------------------------------------------------
+
+drop policy carrusel_slide_lectura_publica on public.carrusel_slide;
+drop policy carrusel_slide_lectura_sesion  on public.carrusel_slide;
+
+create policy carrusel_slide_lectura_publica on public.carrusel_slide
+  for select to anon
+  using (activo);
+
+create policy carrusel_slide_lectura_sesion on public.carrusel_slide
+  for select to authenticated
+  using (activo or public.es_admin());
+
+drop function public.guardar_slide_carrusel(uuid, uuid, integer, text, text, text, text, boolean, uuid);
+
+-- Cuerpo tal cual la migración 21.
+create or replace function public.guardar_slide_carrusel(
+  p_actor_id        uuid,
+  p_id              uuid    default null,
+  p_orden           integer default 0,
+  p_titulo          text    default null,
+  p_descripcion     text    default null,
+  p_etiqueta_enlace text    default null,
+  p_destino_enlace  text    default null,
+  p_activo          boolean default true
+)
+returns public.carrusel_slide
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_fila        public.carrusel_slide;
+  v_imagen_path text;
+begin
+  perform public.establecer_actor(p_actor_id);
+
+  if p_titulo is null or btrim(p_titulo) = '' then
+    raise exception 'Falta el título de la diapositiva.'
+      using errcode = 'check_violation';
+  end if;
+
+  if p_id is null then
+    insert into public.carrusel_slide (orden, titulo, descripcion, etiqueta_enlace, destino_enlace, activo)
+    values (
+      coalesce(p_orden, 0), p_titulo, nullif(btrim(p_descripcion), ''),
+      nullif(btrim(p_etiqueta_enlace), ''), nullif(btrim(p_destino_enlace), ''), false
+    )
+    returning * into v_fila;
+  else
+    select imagen_path into v_imagen_path from public.carrusel_slide where id = p_id for update;
+
+    if not found then
+      raise exception 'La diapositiva % no existe.', p_id
+        using errcode = 'foreign_key_violation';
+    end if;
+
+    if coalesce(p_activo, true) and v_imagen_path is null then
+      raise exception 'No se puede activar una diapositiva sin imagen.'
+        using errcode = 'check_violation';
+    end if;
+
+    update public.carrusel_slide
+       set orden           = coalesce(p_orden, 0),
+           titulo          = p_titulo,
+           descripcion     = nullif(btrim(p_descripcion), ''),
+           etiqueta_enlace = nullif(btrim(p_etiqueta_enlace), ''),
+           destino_enlace  = nullif(btrim(p_destino_enlace), ''),
+           activo          = coalesce(p_activo, true)
+     where id = p_id
+    returning * into v_fila;
+  end if;
+
+  return v_fila;
+end;
+$$;
+
+comment on function public.guardar_slide_carrusel(uuid, uuid, integer, text, text, text, text, boolean) is
+  'Crea o actualiza una diapositiva del carrusel. Reemplazo total del formulario: activo entra aquí (patrón de guardar_nivel), imagen_path no (patrón de guardar_club/guardar_producto). No se puede activar sin imagen: en la creación se fuerza a false; en la edición, si sigue sin imagen, se rechaza con mensaje propio.';
+
+revoke execute on function public.guardar_slide_carrusel(uuid, uuid, integer, text, text, text, text, boolean) from public, anon, authenticated;
+grant  execute on function public.guardar_slide_carrusel(uuid, uuid, integer, text, text, text, text, boolean) to service_role;
+
+drop index public.carrusel_slide_deporte_idx;
+alter table public.carrusel_slide drop constraint carrusel_slide_deporte_fk;
+alter table public.carrusel_slide drop column deporte_id;
+
+-- --- 3. Deshacer la 22 ----------------------------------------------------------
+
+drop function public.alternar_deporte_activo(uuid, uuid, boolean);
+drop function public.establecer_imagen_deporte(uuid, uuid, text);
+drop function public.guardar_deporte(uuid, uuid, text, text, text, text, text[], text, integer);
+
+-- Arrastra sus políticas, triggers e índices. Va después de quitar la FK de arriba.
+drop table public.deporte;
+
+-- --- 4. Comprobación ------------------------------------------------------------
+
+do $$
+begin
+  if to_regclass('public.deporte') is not null then
+    raise exception 'Reversa: la tabla deporte sigue existiendo.';
+  end if;
+
+  if exists (select 1 from information_schema.columns
+              where table_schema = 'public' and table_name = 'carrusel_slide' and column_name = 'deporte_id') then
+    raise exception 'Reversa: carrusel_slide conserva deporte_id.';
+  end if;
+
+  if not exists (select 1 from public.contenido_sitio where clave = 'deportes') then
+    raise exception 'Reversa: contenido_sitio no tiene la clave deportes.';
+  end if;
+end;
+$$;

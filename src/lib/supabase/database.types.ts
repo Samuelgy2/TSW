@@ -39,6 +39,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      carrusel_slide: {
+        Row: {
+          activo: boolean
+          actualizado_en: string
+          creado_en: string
+          deporte_id: string | null
+          descripcion: string | null
+          destino_enlace: string | null
+          etiqueta_enlace: string | null
+          id: string
+          imagen_path: string | null
+          orden: number
+          titulo: string
+        }
+        Insert: {
+          activo?: boolean
+          actualizado_en?: string
+          creado_en?: string
+          deporte_id?: string | null
+          descripcion?: string | null
+          destino_enlace?: string | null
+          etiqueta_enlace?: string | null
+          id?: string
+          imagen_path?: string | null
+          orden?: number
+          titulo: string
+        }
+        Update: {
+          activo?: boolean
+          actualizado_en?: string
+          creado_en?: string
+          deporte_id?: string | null
+          descripcion?: string | null
+          destino_enlace?: string | null
+          etiqueta_enlace?: string | null
+          id?: string
+          imagen_path?: string | null
+          orden?: number
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "carrusel_slide_deporte_fk"
+            columns: ["deporte_id"]
+            isOneToOne: false
+            referencedRelation: "deporte"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club: {
         Row: {
           activo: boolean
@@ -168,6 +218,51 @@ export type Database = {
           clave?: string
           id?: string
           valor?: Json
+        }
+        Relationships: []
+      }
+      deporte: {
+        Row: {
+          activo: boolean
+          actualizado_en: string
+          categoria: string
+          creado_en: string
+          descripcion: string
+          id: string
+          imagen_path: string | null
+          nombre: string
+          orden: number
+          pie: string
+          puntos: string[]
+          slug: string
+        }
+        Insert: {
+          activo?: boolean
+          actualizado_en?: string
+          categoria?: string
+          creado_en?: string
+          descripcion?: string
+          id?: string
+          imagen_path?: string | null
+          nombre: string
+          orden?: number
+          pie?: string
+          puntos?: string[]
+          slug: string
+        }
+        Update: {
+          activo?: boolean
+          actualizado_en?: string
+          categoria?: string
+          creado_en?: string
+          descripcion?: string
+          id?: string
+          imagen_path?: string | null
+          nombre?: string
+          orden?: number
+          pie?: string
+          puntos?: string[]
+          slug?: string
         }
         Relationships: []
       }
@@ -717,6 +812,29 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      alternar_deporte_activo: {
+        Args: { p_activo: boolean; p_actor_id: string; p_id: string }
+        Returns: {
+          activo: boolean
+          actualizado_en: string
+          categoria: string
+          creado_en: string
+          descripcion: string
+          id: string
+          imagen_path: string | null
+          nombre: string
+          orden: number
+          pie: string
+          puntos: string[]
+          slug: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "deporte"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       alternar_documento_activo: {
         Args: { p_activo: boolean; p_actor_id: string; p_id: string }
         Returns: {
@@ -906,6 +1024,10 @@ export type Database = {
         Args: { p_actor_id: string; p_id: string }
         Returns: undefined
       }
+      eliminar_slide_carrusel: {
+        Args: { p_actor_id: string; p_id: string }
+        Returns: undefined
+      }
       es_admin: { Args: never; Returns: boolean }
       es_usuario: { Args: never; Returns: boolean }
       establecer_actor: { Args: { p_actor_id: string }; Returns: undefined }
@@ -931,6 +1053,29 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      establecer_imagen_deporte: {
+        Args: { p_actor_id: string; p_id: string; p_imagen_path: string }
+        Returns: {
+          activo: boolean
+          actualizado_en: string
+          categoria: string
+          creado_en: string
+          descripcion: string
+          id: string
+          imagen_path: string | null
+          nombre: string
+          orden: number
+          pie: string
+          puntos: string[]
+          slug: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "deporte"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       establecer_imagen_producto: {
         Args: { p_actor_id: string; p_id: string; p_imagen_path: string }
         Returns: {
@@ -949,6 +1094,28 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "producto"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      establecer_imagen_slide_carrusel: {
+        Args: { p_actor_id: string; p_id: string; p_imagen_path: string }
+        Returns: {
+          activo: boolean
+          actualizado_en: string
+          creado_en: string
+          deporte_id: string | null
+          descripcion: string | null
+          destino_enlace: string | null
+          etiqueta_enlace: string | null
+          id: string
+          imagen_path: string | null
+          orden: number
+          titulo: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "carrusel_slide"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -1057,6 +1224,39 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "contenido_sitio"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      guardar_deporte: {
+        Args: {
+          p_actor_id: string
+          p_categoria?: string
+          p_descripcion?: string
+          p_id?: string
+          p_nombre?: string
+          p_orden?: number
+          p_pie?: string
+          p_puntos?: string[]
+          p_slug?: string
+        }
+        Returns: {
+          activo: boolean
+          actualizado_en: string
+          categoria: string
+          creado_en: string
+          descripcion: string
+          id: string
+          imagen_path: string | null
+          nombre: string
+          orden: number
+          pie: string
+          puntos: string[]
+          slug: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "deporte"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -1215,6 +1415,38 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      guardar_slide_carrusel: {
+        Args: {
+          p_activo?: boolean
+          p_actor_id: string
+          p_deporte_id?: string
+          p_descripcion?: string
+          p_destino_enlace?: string
+          p_etiqueta_enlace?: string
+          p_id?: string
+          p_orden?: number
+          p_titulo?: string
+        }
+        Returns: {
+          activo: boolean
+          actualizado_en: string
+          creado_en: string
+          deporte_id: string | null
+          descripcion: string | null
+          destino_enlace: string | null
+          etiqueta_enlace: string | null
+          id: string
+          imagen_path: string | null
+          orden: number
+          titulo: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "carrusel_slide"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       guardar_variante: {
         Args: {
           p_activo?: boolean
@@ -1301,6 +1533,10 @@ export type Database = {
       }
       reordenar_niveles: {
         Args: { p_actor_id: string; p_club_id: string; p_ids: string[] }
+        Returns: undefined
+      }
+      reordenar_slides_carrusel: {
+        Args: { p_actor_id: string; p_ids: string[] }
         Returns: undefined
       }
       reservar_stock: {

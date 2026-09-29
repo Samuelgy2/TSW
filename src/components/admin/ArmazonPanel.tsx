@@ -6,18 +6,11 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { useTrampaFoco } from "@/lib/accesibilidad/trampaFoco";
 import { AnimatePresence, motion, useMovimientoReducido } from "@/lib/animaciones";
-import { Boton } from "@/components/ui";
+import { Boton, type OpcionDeporte } from "@/components/ui";
 import { SECCIONES_PANEL } from "@/config/panel";
 import { cerrarSesion } from "@/features/admin/acciones";
 import { CabeceraDeporte } from "@/components/admin/CabeceraDeporte";
-import { OPCIONES_SELECTOR_PANEL } from "@/features/cuenta/datos-de-muestra";
 import { cn } from "@/lib/utils";
-
-/**
- * Lista que alimenta el selector mientras no existe la tabla deporte. Incluye
- * la opción "Marca TSW (todos)" para administrar el merchandising común.
- */
-const DEPORTES_PANEL = OPCIONES_SELECTOR_PANEL;
 
 /**
  * Armazón del panel: barra lateral azul profundo con las secciones, correo
@@ -26,18 +19,22 @@ const DEPORTES_PANEL = OPCIONES_SELECTOR_PANEL;
  * atrapado, cierre con Escape y con toque fuera.
  *
  * Con el cambio de alcance multideporte lleva también el SelectorDeporte,
- * visible en escritorio y en el cajón móvil. DeporteActivo llega del servidor
- * (cookie tsw.deporte); por ahora es solo un filtro visual: no filtra
- * consultas porque la columna no existe.
+ * visible en escritorio y en el cajón móvil. `deporte` y `deportes` llegan del
+ * servidor (cookie tsw.deporte y tabla `deporte`, incluidos los inactivos con
+ * su marca, más "Marca TSW (todos)"); por ahora es solo un filtro visual: no
+ * filtra consultas porque las demás tablas aún no llevan deporte_id.
  */
 export function ArmazonPanel({
   correo,
   deporte,
+  deportes,
   children,
 }: {
   correo: string;
   /** Deporte activo leído de la cookie en el servidor. */
   deporte: { id: string; nombre: string };
+  /** Opciones del selector. */
+  deportes: OpcionDeporte[];
   children: ReactNode;
 }) {
   const ruta = usePathname();
@@ -90,7 +87,7 @@ export function ArmazonPanel({
 
       {/* --- Barra lateral (escritorio) ---------------------------------- */}
       <aside className="hidden lg:sticky lg:top-0 lg:flex lg:h-svh lg:flex-col">
-        <Navegacion ruta={ruta} correo={correo} deporte={deporte} />
+        <Navegacion ruta={ruta} correo={correo} deporte={deporte} deportes={deportes} />
       </aside>
 
       {/* --- Cajón lateral (móvil y tablet) -------------------------------- */}
@@ -118,7 +115,13 @@ export function ArmazonPanel({
               exit={reducido ? undefined : { x: -24, opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <Navegacion ruta={ruta} correo={correo} deporte={deporte} alCerrar={() => setAbierto(false)} />
+              <Navegacion
+                ruta={ruta}
+                correo={correo}
+                deporte={deporte}
+                deportes={deportes}
+                alCerrar={() => setAbierto(false)}
+              />
             </motion.div>
           </div>
         )}
@@ -133,11 +136,13 @@ function Navegacion({
   ruta,
   correo,
   deporte,
+  deportes,
   alCerrar,
 }: {
   ruta: string;
   correo: string;
   deporte: { id: string; nombre: string };
+  deportes: OpcionDeporte[];
   alCerrar?: () => void;
 }) {
   const activa = (href: string) => (href === "/admin" ? ruta === "/admin" : ruta.startsWith(href));
@@ -168,7 +173,7 @@ function Navegacion({
 
       {/* Selector de deporte: en todas las secciones, encima de la navegación. */}
       <div className="px-4 pb-3">
-        <CabeceraDeporte deportes={DEPORTES_PANEL} valor={deporte.id} />
+        <CabeceraDeporte deportes={deportes} valor={deporte.id} />
         <p className="mt-2 text-xs text-blanco/60">
           Administrando: <span className="font-semibold text-blanco/85">{deporte.nombre}</span>
         </p>

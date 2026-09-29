@@ -13,6 +13,8 @@ import { formatearFechaHora } from "@/lib/utils";
 import { CampoImagenSitio } from "./CampoImagenSitio";
 import { ListaEditable, ListaTextoEditable } from "./ListaEditable";
 import { ClubesAdmin } from "./ClubesAdmin";
+import { CarruselAdmin } from "./CarruselAdmin";
+import type { SlideCarrusel } from "@/features/carrusel/types";
 import type {
   ClaveContenido,
   EntradaDeportes,
@@ -30,8 +32,8 @@ type Contenido = {
   tienda: EntradaTienda;
 };
 
-/** "clubes" no es una sección de contenido_sitio: datos y logo de cada club, por sus RPC. */
-type Pestana = ClaveContenido | "clubes";
+/** "clubes" y "carrusel" no son secciones de contenido_sitio: tablas propias con sus propias RPC. */
+type Pestana = ClaveContenido | "clubes" | "carrusel";
 
 const PESTANAS: { valor: Pestana; etiqueta: string }[] = [
   { valor: "deportes", etiqueta: "Deportes" },
@@ -40,6 +42,7 @@ const PESTANAS: { valor: Pestana; etiqueta: string }[] = [
   { valor: "semilleros", etiqueta: "Semilleros" },
   { valor: "tienda", etiqueta: "Tienda" },
   { valor: "clubes", etiqueta: "Clubes" },
+  { valor: "carrusel", etiqueta: "Carrusel" },
 ];
 
 /**
@@ -62,10 +65,12 @@ export function SitioAdmin({
   contenidoInicial,
   ediciones,
   clubes,
+  slidesCarrusel,
 }: {
   contenidoInicial: Contenido;
   ediciones: Record<ClaveContenido, EdicionSeccion>;
   clubes: ClubPanel[];
+  slidesCarrusel: SlideCarrusel[];
 }) {
   const router = useRouter();
   const [pestana, setPestana] = useState<Pestana>("deportes");
@@ -74,10 +79,14 @@ export function SitioAdmin({
   const [mensaje, setMensaje] = useState<{ tono: "exito" | "error"; texto: string } | null>(null);
   const [confirmarRestablecer, setConfirmarRestablecer] = useState(false);
 
-  const edicion = pestana === "clubes" ? null : ediciones[pestana];
+  const esTablaPropia = pestana === "clubes" || pestana === "carrusel";
+  const edicion = esTablaPropia ? null : ediciones[pestana];
+  // TEMPORAL: los deportes ya viven en la tabla `deporte`; esta pestaña todavía
+  // escribe en el JSON viejo, que nadie lee. Se bloquea hasta el formulario nuevo.
+  const enMigracion = pestana === "deportes";
 
   async function guardar() {
-    if (pestana === "clubes") return;
+    if (esTablaPropia || enMigracion) return;
     setGuardando(true);
     setMensaje(null);
     const resultado = await guardarSeccionContenido(pestana, borrador[pestana]);
@@ -91,7 +100,7 @@ export function SitioAdmin({
   }
 
   async function restablecer() {
-    if (pestana === "clubes") return;
+    if (esTablaPropia) return;
     setGuardando(true);
     const resultado = await restablecerSeccionContenido(pestana);
     setGuardando(false);
@@ -117,7 +126,7 @@ export function SitioAdmin({
       >
         {edicion === null ? (
           <div className="mt-6">
-            <ClubesAdmin clubes={clubes} />
+            {pestana === "clubes" ? <ClubesAdmin clubes={clubes} /> : <CarruselAdmin slides={slidesCarrusel} />}
           </div>
         ) : (
         <div className="mt-6 flex flex-col gap-6">
@@ -137,12 +146,18 @@ export function SitioAdmin({
               variante="fantasma"
               tamano="sm"
               onClick={() => setConfirmarRestablecer(true)}
-              disabled={!edicion.personalizada || guardando}
+              disabled={!edicion.personalizada || guardando || enMigracion}
             >
               Restablecer al valor por defecto
             </Boton>
           </div>
 
+          {enMigracion && (
+            <Aviso tono="aviso" titulo="Deportes en migración">
+              Los deportes pasaron a una tabla propia y la edición vuelve en breve. Mientras tanto no se puede guardar
+              desde aquí: lo que se ve en el sitio no cambia.
+            </Aviso>
+          )}
           {mensaje && <Aviso tono={mensaje.tono}>{mensaje.texto}</Aviso>}
 
           {pestana === "deportes" && (
@@ -177,7 +192,7 @@ export function SitioAdmin({
           )}
 
           <div className="flex justify-end border-t border-gris-borde pt-4">
-            <Boton onClick={guardar} cargando={guardando}>
+            <Boton onClick={guardar} cargando={guardando} disabled={enMigracion}>
               Guardar sección
             </Boton>
           </div>

@@ -80,6 +80,8 @@ const RUTAS_POR_ENTIDAD = {
   contenido_matriculas: ["/matriculas"],
   contenido_semilleros: ["/semilleros"],
   contenido_tienda: ["/tienda"],
+  // Carrusel de la portada (migración 21): solo el home lo pinta.
+  carrusel_slide: ["/"],
 } as const;
 
 export type EntidadRevalidable = keyof typeof RUTAS_POR_ENTIDAD;
@@ -141,6 +143,13 @@ const MENSAJE_POR_CONSTRAINT: Record<string, Traduccion> = {
   perfil_admin_nombre_no_vacio: validacion("El nombre no puede quedar vacío."),
   perfil_usuario_nombre_no_vacio: validacion("El nombre no puede quedar vacío."),
   perfil_usuario_telefono_no_vacio: validacion("El teléfono no puede quedar en blanco: déjalo vacío o escribe uno."),
+  // migración 21: carrusel
+  carrusel_slide_titulo_no_vacio: validacion("El título no puede quedar vacío."),
+  carrusel_slide_destino_formato: validacion("El destino debe ser una ruta interna (/semilleros) o un ancla (#seccion)."),
+  carrusel_slide_enlace_completo: validacion("El texto y el destino del botón van juntos: pon los dos o ninguno."),
+  // migración 22: deporte
+  deporte_slug_formato: validacion("Solo minúsculas, números y guiones en el slug."),
+  deporte_nombre_no_vacio: validacion("El nombre no puede quedar vacío."),
 
   // --- UNIQUE (23505) --------------------------------------------------------
   // migración 02: catálogo
@@ -154,6 +163,9 @@ const MENSAJE_POR_CONSTRAINT: Record<string, Traduccion> = {
   competencia_slug_unico: validacion("Ya existe otra competencia con ese slug. Cambia el slug."),
   // migración 05: pedidos
   pedido_item_variante_unica: conflicto("Ese pedido ya tiene una línea con esa variante."),
+  // migración 22: deporte (el nombre es un índice único, Postgres lo reporta igual)
+  deporte_slug_unico: validacion("Ya existe otro deporte con ese identificador."),
+  deporte_nombre_unico: validacion("Ya existe otro deporte con ese nombre."),
 };
 
 /**

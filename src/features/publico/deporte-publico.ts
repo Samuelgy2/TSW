@@ -14,10 +14,10 @@ export function deportePublicoPorId(id: string | undefined, deportes: readonly D
 }
 
 /**
- * El selector de deporte del sitio público se oculta hasta que exista la
- * tabla `deporte` y las consultas filtren por ella. Hoy no filtra nada y su
- * segunda opción es un marcador ("[DEPORTE 2]"). Se enciende aquí cuando
- * llegue el esquema; el resto del recorrido por deporte no cambia.
+ * El selector de deporte del sitio público sigue apagado. La tabla `deporte`
+ * existe desde la migración 22, pero es una superficie pública nueva y la
+ * decisión de encenderlo es de Samuel: hoy `?deporte=` no filtra ninguna
+ * consulta (/semilleros trabaja por `?club=`). No se activa sin preguntarle.
  */
 export const SELECTOR_DEPORTE_PUBLICO_VISIBLE = false;
 

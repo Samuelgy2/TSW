@@ -4,6 +4,7 @@ import { PaginaPanel } from "@/components/admin/PaginaPanel";
 import { SECCIONES_PANEL } from "@/config/panel";
 import { exigirAdminPagina } from "@/lib/auth";
 import { clubesParaPanel, contenidoParaPanel, ultimasEdicionesContenido } from "@/features/admin/queries-contenido";
+import { listarSlidesCarruselPanel } from "@/features/admin/queries";
 import { SitioAdmin } from "@/features/sitio/components/SitioAdmin";
 
 export const metadata: Metadata = { title: "Contenido del sitio" };
@@ -18,15 +19,21 @@ const SECCION = SECCIONES_PANEL.find((s) => s.href === "/admin/sitio");
  */
 export default async function PaginaSitioPanel() {
   await exigirAdminPagina("/admin/sitio");
-  const [contenidoInicial, ediciones, clubes] = await Promise.all([
+  const [contenidoInicial, ediciones, clubes, slidesCarrusel] = await Promise.all([
     contenidoParaPanel(),
     ultimasEdicionesContenido(),
     clubesParaPanel(),
+    listarSlidesCarruselPanel(),
   ]);
 
   return (
     <PaginaPanel titulo="Contenido del sitio" descripcion={SECCION?.descripcion}>
-      <SitioAdmin contenidoInicial={contenidoInicial} ediciones={ediciones} clubes={clubes} />
+      <SitioAdmin
+        contenidoInicial={contenidoInicial}
+        ediciones={ediciones}
+        clubes={clubes}
+        slidesCarrusel={slidesCarrusel}
+      />
     </PaginaPanel>
   );
 }

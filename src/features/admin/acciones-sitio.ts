@@ -16,7 +16,7 @@ import {
   type ClaveContenido,
 } from "@/features/sitio/schemas";
 import { ejecutarRpc, revalidarPublico } from "./mutations";
-import { esquemaClub } from "./schemas";
+import { esquemaClub, esquemaReordenarSlidesCarrusel, esquemaSlideCarrusel, type EntradaSlideCarrusel } from "./schemas";
 import {
   descartarSubida,
   extensionDe,
@@ -35,6 +35,13 @@ function mensajeDe(error: unknown): string {
   return "No se pudo guardar. Inténtalo de nuevo en un momento.";
 }
 
+// Los deportes ya viven en la tabla `deporte` (migración 22). Mientras el panel
+// no tenga su formulario nuevo, guardar la sección escribiría en un JSON que
+// nadie lee y parecería que funcionó. Bloque TEMPORAL; sin `export` porque este
+// archivo es "use server" (verificar:use-server).
+const DEPORTES_EN_MIGRACION: ClaveContenido = "deportes";
+const MENSAJE_DEPORTES_EN_MIGRACION = "Los deportes están en migración: la edición vuelve en breve.";
+
 /**
  * Guarda una sección completa: reemplazo total, igual que el resto de los
  * `guardar_*` del panel. El formulario ES el estado completo de la sección; el
@@ -48,6 +55,7 @@ function mensajeDe(error: unknown): string {
  */
 export async function guardarSeccionContenido(clave: ClaveContenido, valor: unknown): Promise<ResultadoEscritura> {
   if (!CLAVES_CONTENIDO.includes(clave)) return { ok: false, error: "Sección inválida." };
+  if (clave === DEPORTES_EN_MIGRACION) return { ok: false, error: MENSAJE_DEPORTES_EN_MIGRACION };
 
   const esquema = ESQUEMA_POR_CLAVE[clave];
   const datos = esquema.safeParse(valor);
@@ -74,6 +82,7 @@ export async function guardarSeccionContenido(clave: ClaveContenido, valor: unkn
  */
 export async function restablecerSeccionContenido(clave: ClaveContenido): Promise<ResultadoEscritura> {
   if (!CLAVES_CONTENIDO.includes(clave)) return { ok: false, error: "Sección inválida." };
+  if (clave === DEPORTES_EN_MIGRACION) return { ok: false, error: MENSAJE_DEPORTES_EN_MIGRACION };
 
   try {
     await ejecutarRpc("restablecer_contenido", { p_clave: clave });
@@ -223,6 +232,146 @@ export async function confirmarImagenSitio(ruta: string): Promise<ResultadoEscri
 
     const verificada = await verificarSubida(BUCKET_SITIO, ruta, OPCIONES_IMAGEN_SITIO);
     if (!verificada.ok) return verificada;
+    return { ok: true, mensaje: "Imagen cargada.", ruta };
+  } catch (error) {
+    return { ok: false, error: mensajeDe(error) };
+  }
+}
+
+// --- Carrusel de la portada (migración 21) -----------------------------------
+
+/**
+ * Reemplazo total del formulario, con `activo` incluido (patrón de
+ * guardar_nivel: un interruptor simple, sin efectos sobre otras filas ni
+ * reglas propias, no necesita su propia RPC). `imagen_path` queda fuera, por
+ * establecerImagenSlideCarrusel.
+ */
+export async function guardarSlideCarrusel(entrada: EntradaSlideCarrusel): Promise<ResultadoEscritura> {
+  const datos = esquemaSlideCarrusel.safeParse(entrada);
+  if (!datos.success) return { ok: false, error: datos.error.issues[0]?.message ?? "Revisa los datos." };
+
+  try {
+    const s = datos.data;
+    await exigirAdmin();
+    // Reemplazo total: si el formulario no habla del deporte, se conserva el
+    // que la diapositiva ya tiene. Solo `null` explícito quita la etiqueta.
+    const deporteId = s.deporteId !== undefined ? s.deporteId : s.id ? await deporteDelSlide(s.id) : null;
+    await ejecutarRpc("guardar_slide_carrusel", {
+      p_id: s.id,
+      p_orden: s.orden,
+      p_titulo: s.titulo,
+      p_descripcion: s.descripcion ?? undefined,
+      p_etiqueta_enlace: s.etiquetaEnlace ?? undefined,
+      p_destino_enlace: s.destinoEnlace ?? undefined,
+      p_activo: s.activo,
+      // `?? undefined` = null en el cable (PostgREST omite la clave, el default
+      // es null). Va SIEMPRE escrito: verificar:parametros lo exige.
+      p_deporte_id: deporteId ?? undefined,
+    });
+    revalidarPublico("carrusel_slide");
+    return { ok: true, mensaje: s.id ? "Diapositiva actualizada." : "Diapositiva creada." };
+  } catch (error) {
+    return { ok: false, error: mensajeDe(error) };
+  }
+}
+
+/** Deporte con el que está etiquetada una diapositiva hoy (null = sin etiqueta o fila inexistente). */
+async function deporteDelSlide(id: string): Promise<string | null> {
+  const supabase = await crearClienteServidor();
+  const { data, error } = await supabase.from("carrusel_slide").select("deporte_id").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data?.deporte_id ?? null;
+}
+
+/** Alternar activo sin abrir el formulario: relee la fila y reenvía el resto tal cual. */
+export async function alternarSlideCarrusel(id: string, activo: boolean): Promise<ResultadoEscritura> {
+  try {
+    await exigirAdmin();
+    const supabase = await crearClienteServidor();
+    const { data: actual, error } = await supabase
+      .from("carrusel_slide")
+      .select("orden, titulo, descripcion, etiqueta_enlace, destino_enlace, deporte_id")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!actual) return { ok: false, error: "La diapositiva no existe." };
+
+    await ejecutarRpc("guardar_slide_carrusel", {
+      p_id: id,
+      p_orden: actual.orden,
+      p_titulo: actual.titulo,
+      p_descripcion: actual.descripcion ?? undefined,
+      p_etiqueta_enlace: actual.etiqueta_enlace ?? undefined,
+      p_destino_enlace: actual.destino_enlace ?? undefined,
+      p_activo: activo,
+      p_deporte_id: actual.deporte_id ?? undefined,
+    });
+    revalidarPublico("carrusel_slide");
+    return { ok: true, mensaje: activo ? "Diapositiva activada." : "Diapositiva desactivada." };
+  } catch (error) {
+    return { ok: false, error: mensajeDe(error) };
+  }
+}
+
+export async function eliminarSlideCarrusel(id: string): Promise<ResultadoEscritura> {
+  try {
+    if (!UUID.test(id)) return { ok: false, error: "Diapositiva inválida." };
+    await ejecutarRpc("eliminar_slide_carrusel", { p_id: id });
+    revalidarPublico("carrusel_slide");
+    return { ok: true, mensaje: "Diapositiva eliminada." };
+  } catch (error) {
+    return { ok: false, error: mensajeDe(error) };
+  }
+}
+
+export async function reordenarSlidesCarrusel(ids: string[]): Promise<ResultadoEscritura> {
+  const datos = esquemaReordenarSlidesCarrusel.safeParse({ ids });
+  if (!datos.success) return { ok: false, error: datos.error.issues[0]?.message ?? "No hay diapositivas para reordenar." };
+
+  try {
+    await ejecutarRpc("reordenar_slides_carrusel", { p_ids: datos.data.ids });
+    revalidarPublico("carrusel_slide");
+    return { ok: true, mensaje: "Orden actualizado." };
+  } catch (error) {
+    return { ok: false, error: mensajeDe(error) };
+  }
+}
+
+/** Paso 1 de la subida directa de la foto de una diapositiva. Mismo bucket y límites que el resto del sitio. */
+export async function prepararImagenSlideCarrusel(id: string, mime: string, tamano: number): Promise<SubidaPreparada> {
+  try {
+    await exigirAdmin();
+    if (!UUID.test(id)) return { ok: false, error: "Diapositiva inválida." };
+    const invalido = validarDeclarado(mime, tamano, OPCIONES_IMAGEN_SITIO);
+    if (invalido) return { ok: false, error: invalido };
+
+    const ruta = `carrusel/${crypto.randomUUID()}.${extensionDe(mime)}`;
+    return { ok: true, bucket: BUCKET_SITIO, ruta, token: await firmarSubida(BUCKET_SITIO, ruta) };
+  } catch (error) {
+    return { ok: false, error: mensajeDe(error) };
+  }
+}
+
+/** Paso 3: verifica el archivo ya subido y lo fija por establecer_imagen_slide_carrusel. Si la RPC falla, se borra. */
+export async function confirmarImagenSlideCarrusel(
+  id: string,
+  ruta: string,
+): Promise<ResultadoEscritura & { ruta?: string }> {
+  try {
+    await exigirAdmin();
+    if (!UUID.test(id)) return { ok: false, error: "Diapositiva inválida." };
+    if (!/^carrusel\/[0-9a-f-]{36}\.(jpg|png|webp)$/.test(ruta)) return { ok: false, error: "Ruta de imagen inválida." };
+
+    const verificada = await verificarSubida(BUCKET_SITIO, ruta, OPCIONES_IMAGEN_SITIO);
+    if (!verificada.ok) return verificada;
+
+    try {
+      await ejecutarRpc("establecer_imagen_slide_carrusel", { p_id: id, p_imagen_path: ruta });
+    } catch (error) {
+      await descartarSubida(BUCKET_SITIO, ruta);
+      throw error;
+    }
+    revalidarPublico("carrusel_slide");
     return { ok: true, mensaje: "Imagen cargada.", ruta };
   } catch (error) {
     return { ok: false, error: mensajeDe(error) };

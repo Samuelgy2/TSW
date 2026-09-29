@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { ArmazonPanel } from "@/components/admin/ArmazonPanel";
 import { exigirAdminPagina } from "@/lib/auth";
-import { deporteActivo } from "@/features/cuenta/deporte-servidor";
+import { deporteActivo, listarOpcionesSelectorPanel } from "@/features/cuenta/deporte-servidor";
 
 export const metadata: Metadata = {
   title: { default: "Panel", template: "%s | Panel TSW" },
@@ -15,15 +15,16 @@ export const metadata: Metadata = {
  * Next no re-ejecuta el layout al navegar entre páginas hermanas, así que la
  * comprobación de aquí solo cubre la primera carga.
  *
- * También lee el deporte activo de la cookie tsw.deporte para el selector del
- * armazón. Es preferencia de vista: no filtra consultas todavía.
+ * También lee el deporte activo de la cookie tsw.deporte y la lista de la
+ * tabla `deporte` para el selector del armazón. Es preferencia de vista: no
+ * filtra consultas todavía.
  */
 export default async function LayoutPanel({ children }: { children: ReactNode }) {
   const { usuario } = await exigirAdminPagina("/admin");
-  const deporte = await deporteActivo();
+  const [deporte, deportes] = await Promise.all([deporteActivo(), listarOpcionesSelectorPanel()]);
 
   return (
-    <ArmazonPanel correo={usuario.email ?? "administrador"} deporte={deporte}>
+    <ArmazonPanel correo={usuario.email ?? "administrador"} deporte={deporte} deportes={deportes}>
       {children}
     </ArmazonPanel>
   );

@@ -2,6 +2,7 @@ import { crearClienteServidor } from "@/lib/supabase/server";
 import { exigirAdmin } from "@/lib/auth";
 import type { DocumentoConVersiones, CompetenciaConResultados, EventoAuditoria, Nivel } from "./types";
 import type { ProductoConVariantesCompletas } from "@/features/tienda/types";
+import type { SlideCarrusel } from "@/features/carrusel/types";
 
 // --- Bitácora ---------------------------------------------------------------
 
@@ -172,6 +173,22 @@ export async function listarNivelesPanel(): Promise<Nivel[]> {
   const supabase = await crearClienteServidor();
   const { data, error } = await supabase
     .from("nivel")
+    .select("*")
+    .order("orden", { ascending: true });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+// --- Carrusel de la portada (migración 21) -------------------------------------
+
+/** Todas las diapositivas, activas e inactivas, en su orden. */
+export async function listarSlidesCarruselPanel(): Promise<SlideCarrusel[]> {
+  await exigirAdmin();
+
+  const supabase = await crearClienteServidor();
+  const { data, error } = await supabase
+    .from("carrusel_slide")
     .select("*")
     .order("orden", { ascending: true });
 

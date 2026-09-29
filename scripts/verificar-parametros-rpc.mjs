@@ -34,6 +34,14 @@ import { execSync } from "node:child_process";
 const DIR = "supabase/migrations";
 const INYECTADOS = new Set(["p_actor_id", "p_actor"]);
 
+/**
+ * Parámetros de RPC de reemplazo total que, aunque tengan DEFAULT y el cuerpo
+ * no los exija, la acción debe escribir SIEMPRE: omitirlos equivale a null y
+ * borra el dato. `p_deporte_id` (migración 23): omitirlo quitaba la etiqueta de
+ * deporte del slide en cada edición.
+ */
+const SIEMPRE = { guardar_slide_carrusel: ["p_deporte_id"] };
+
 const sinComentarios = (t) => t.replace(/--[^\n]*/g, "");
 
 // ---------------------------------------------------------------------------
@@ -126,7 +134,7 @@ for (const llamada of llamadas) {
 
   const obligatorios = firma.parametros
     .filter((p) => !INYECTADOS.has(p.nombre))
-    .filter((p) => !p.tieneDefault || p.exigidoEnElCuerpo);
+    .filter((p) => !p.tieneDefault || p.exigidoEnElCuerpo || SIEMPRE[llamada.funcion]?.includes(p.nombre));
 
   const faltan = obligatorios.filter((p) => !llamada.claves.includes(p.nombre));
 

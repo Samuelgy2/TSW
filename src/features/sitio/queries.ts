@@ -3,7 +3,6 @@ import "server-only";
 import { DEPORTES, MATRICULAS, PORTADA, SEMILLEROS, TIENDA } from "@/config/contenido";
 import { crearClientePublico } from "@/lib/supabase/publico";
 import {
-  esquemaDeportes,
   esquemaMatriculas,
   esquemaPortada,
   esquemaSemilleros,
@@ -70,8 +69,52 @@ async function leerSeccion<T>(clave: string, esquema: { safeParse: (v: unknown) 
   }
 }
 
-export function obtenerDeportes(): Promise<EntradaDeportes> {
-  return leerSeccion("deportes", esquemaDeportes, DEPORTES as unknown as EntradaDeportes);
+/**
+ * Deportes activos, desde la tabla `deporte` (migración 22) y no desde
+ * `contenido_sitio`. Misma forma de siempre (`slug` sale como `id`,
+ * `imagen_path` como `imagen`), así que el hero, "Nuestros deportes" y los
+ * selectores públicos no cambian.
+ *
+ * Filtra `activo` en la consulta además de la política RLS: las vistas
+ * públicas no dependen de la política como única defensa.
+ *
+ * Si la lectura falla, o no vuelve ninguna fila (la RPC impide desactivar el
+ * último, así que vacío solo pasaría por un fallo o una tabla borrada), cae a
+ * `DEPORTES` de config/contenido.ts: la portada nunca se queda sin deportes.
+ */
+export async function obtenerDeportes(): Promise<EntradaDeportes> {
+  const respaldo = DEPORTES as unknown as EntradaDeportes;
+  try {
+    const supabase = crearClientePublico();
+    const { data, error } = await supabase
+      .from("deporte")
+      .select("slug, nombre, categoria, descripcion, puntos, pie, imagen_path")
+      .eq("activo", true)
+      .order("orden")
+      .order("creado_en");
+
+    if (error) {
+      console.error("[deporte] error al leer la tabla, se usa el valor de fábrica:", error.message);
+      return respaldo;
+    }
+    if (!data || data.length === 0) {
+      console.error("[deporte] la tabla no devolvió deportes activos, se usa el valor de fábrica.");
+      return respaldo;
+    }
+
+    return data.map((d) => ({
+      id: d.slug,
+      nombre: d.nombre,
+      categoria: d.categoria,
+      descripcion: d.descripcion,
+      puntos: d.puntos,
+      imagen: d.imagen_path,
+      pie: d.pie,
+    }));
+  } catch (error) {
+    console.error("[deporte] fallo inesperado leyendo la tabla, se usa el valor de fábrica:", error);
+    return respaldo;
+  }
 }
 
 export function obtenerPortada(): Promise<EntradaPortada> {

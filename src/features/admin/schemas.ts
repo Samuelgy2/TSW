@@ -55,6 +55,40 @@ export const esquemaClub = z.object({
 
 export type EntradaClub = z.infer<typeof esquemaClub>;
 
+// --- Carrusel de la portada (migración 21) -----------------------------------
+
+export const esquemaSlideCarrusel = z
+  .object({
+    id: UUID.optional(),
+    orden: z.number().int().min(0).default(0),
+    titulo: z.string().trim().min(1, "El título es obligatorio.").max(120, "Máximo 120 caracteres."),
+    descripcion: z.string().trim().max(300, "Máximo 300 caracteres.").optional(),
+    etiquetaEnlace: z.string().trim().max(40, "Máximo 40 caracteres.").optional(),
+    // Ruta interna o ancla. Sin esquema ni dominio: nunca un enlace externo.
+    destinoEnlace: z
+      .string()
+      .trim()
+      .regex(/^(\/[a-z0-9/_-]*|#[a-z0-9-]+)$/, "Escribe una ruta interna (/semilleros) o un ancla (#seccion).")
+      .optional(),
+    activo: z.boolean().default(true),
+    // Tres estados a propósito: uuid = asignar, null = quitar la etiqueta,
+    // ausente = no tocar (la acción relee el valor actual). guardar_slide_carrusel
+    // es reemplazo total, así que "ausente" nunca puede viajar tal cual a la RPC.
+    deporteId: UUID.nullable().optional(),
+  })
+  .refine((v) => Boolean(v.etiquetaEnlace) === Boolean(v.destinoEnlace), {
+    message: "El texto y el destino del botón van juntos: pon los dos o ninguno.",
+    path: ["destinoEnlace"],
+  });
+
+export type EntradaSlideCarrusel = z.infer<typeof esquemaSlideCarrusel>;
+
+export const esquemaReordenarSlidesCarrusel = z.object({
+  ids: z.array(UUID).min(1, "No hay diapositivas para reordenar."),
+});
+
+export type EntradaReordenarSlidesCarrusel = z.infer<typeof esquemaReordenarSlidesCarrusel>;
+
 // --- Acceso (bloque A) ------------------------------------------------------
 
 export const esquemaAcceso = z.object({
