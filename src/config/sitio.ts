@@ -16,11 +16,11 @@ export const SITIO = {
   subtitulo: "Corporación deportiva",
   /**
    * Logo de la corporación, como ruta dentro de /public (por ejemplo
-   * "/imagenes/logo-corporacion.png"). Es la marca del sitio, como el favicon,
-   * no contenido que se edite desde el panel. En null hasta que el archivo
-   * esté en public/imagenes/: la cabecera reserva su hueco mientras tanto.
+   * "/imagenes/logocorporacion.png"). Es la marca del sitio, como el favicon,
+   * no contenido que se edite desde el panel. En null la cabecera reserva su
+   * hueco con un marcador.
    */
-  logo: null as string | null,
+  logo: "/imagenes/logocorporacion.png" as string | null,
   lema: "No dudamos de las cosas maravillosas que puede hacer el deporte en el ser humano.",
   descripcion:
     "Corporación deportiva: matrículas, semilleros, competencias y dotación oficial de cada deporte.",

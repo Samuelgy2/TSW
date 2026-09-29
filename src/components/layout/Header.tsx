@@ -160,7 +160,7 @@ export function Header({ clubes }: { clubes: ClubMenu[] }) {
               width={40}
               height={40}
               priority
-              className="h-10 w-10 shrink-0 object-contain"
+              className="h-10 w-10 shrink-0 rounded-full object-contain"
             />
           ) : (
             <span
