@@ -95,7 +95,10 @@ export const esquemaSlideCarrusel = z
     destinoEnlace: z
       .string()
       .trim()
-      .regex(/^(\/[a-z0-9/_-]*|#[a-z0-9-]+)$/, "Escribe una ruta interna (/semilleros) o un ancla (#seccion).")
+      .regex(
+        /^(\/[a-z0-9/_-]*|#[a-z0-9-]+|https:\/\/wa\.me\/57[0-9]{10})$/,
+        "Escribe una ruta interna (/semilleros), un ancla (#seccion) o un enlace de WhatsApp (https://wa.me/57…).",
+      )
       .optional(),
     activo: z.boolean().default(true),
     // Tres estados a propósito: uuid = asignar, null = quitar la etiqueta,

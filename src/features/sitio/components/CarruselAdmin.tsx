@@ -321,7 +321,7 @@ function ModalSlide({
             value={destinoEnlace}
             onChange={(e) => setDestinoEnlace(e.target.value)}
             placeholder="/semilleros"
-            ayuda="Ruta interna o ancla (#seccion). Los dos campos van juntos."
+            ayuda="Ruta interna, ancla (#seccion) o enlace de WhatsApp (https://wa.me/57…). Los dos campos van juntos."
           />
         </div>
         <label className="flex min-h-[44px] items-center gap-3 text-sm">

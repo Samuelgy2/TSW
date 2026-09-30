@@ -107,7 +107,7 @@ export function HeroPortal({
               exit={reducido ? undefined : { opacity: 0 }}
               transition={{ duration: reducido ? 0 : 0.35, ease: SUAVIZADO }}
             >
-              <h1 className="titulo-hero mt-5">{activo ? activo.titulo : SITIO.nombreLargo}</h1>
+              <h1 className={cn(activo ? "titulo-hero-slide" : "titulo-hero", "mt-5")}>{activo ? activo.titulo : SITIO.nombreLargo}</h1>
               {(activo ? activo.descripcion : portada.presentacion) && (
                 <p className="mt-4 max-w-xl text-lg text-blanco/85 sm:text-xl">
                   {activo ? activo.descripcion : portada.presentacion}
@@ -117,7 +117,11 @@ export function HeroPortal({
                 {activo ? (
                   activo.etiqueta_enlace &&
                   activo.destino_enlace && (
-                    <Boton href={activo.destino_enlace} tamano="lg">
+                    <Boton
+                      href={activo.destino_enlace}
+                      externo={activo.destino_enlace.startsWith("https://")}
+                      tamano="lg"
+                    >
                       {activo.etiqueta_enlace}
                     </Boton>
                   )

@@ -166,6 +166,15 @@
     line-height: 1.05;
   }
 
+  /* Título de una diapositiva del carrusel: más contenido y más largo que el
+     titular fijo (p. ej. «Inscripciones abiertas todo el año»), así que crece
+     menos. A 1360px mide ~57px: «INSCRIPCIONES» cabe en la columna del texto
+     en vez de partirse a mitad de palabra. */
+  .titulo-hero-slide {
+    font-size: clamp(2rem, 1rem + 3vw, 3.75rem);
+    line-height: 1.05;
+  }
+
   /* Título de página interior (hero de matrículas, tienda...). 32px a 360px,
      56px desde ~1200px. */
   .titulo-pagina {
