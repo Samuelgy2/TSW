@@ -205,6 +205,9 @@ Fuente: [contenido-tsw-por-pagina.md](contenido-tsw-por-pagina.md); inventario e
 - `supabase/pendientes/*.pendiente` son migraciones escritas que NO deben
   aplicarse todavía (un `db push` no las ve). Vuelven a `supabase/migrations/`
   con timestamp nuevo cuando se verifique lo que las precede.
-- **Limpieza pendiente** (migración aparte, después): `matriculas.cupos` y
-  `matriculas.cierre` quedan inertes en la fila de `contenido_sitio` cuando el
-  bloque superior de Matrículas pase a ser un array editable.
+- **Limpieza pendiente** (migración aparte, después), claves que quedan inertes
+  en filas de `contenido_sitio`:
+  - `matriculas.cupos` y `matriculas.cierre`, cuando el bloque superior de
+    Matrículas pase a ser un array editable.
+  - `portada.cifraPendiente`: el esquema y el sitio ya no la leen (una cifra sin
+    valor se oculta); en producción la fila aún la guarda, con el valor "Error".
