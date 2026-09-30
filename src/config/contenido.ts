@@ -77,11 +77,12 @@ export type Cifra = {
 
 export const PORTADA = {
   /** Etiqueta pequeña sobre el titular: tipo de entidad. */
-  etiquetaEntidad: "[Entidad deportiva]",
-  presentacion: "[Presentación de la corporación en dos frases: qué deportes forma, para quién y con qué enfoque.]",
+  etiquetaEntidad: "Entidad deportiva · BMX · Habilidades motrices",
+  presentacion:
+    "Desde 2022 formamos niños, niñas y jóvenes en Medellín a través del BMX. Con nuestros clubes BMX Club TSW y BMX Mastercross, y el Programa de Habilidades Motrices, acompañamos a cada deportista desde sus primeros pasos hasta la competencia.",
   // Del documento de la cliente (seccion 1). Se arma con IDENTIDAD_LEGAL para
   // no repetir las dos afiliaciones en dos archivos.
-  aval: `${IDENTIDAD_LEGAL.reconocimiento} · ${IDENTIDAD_LEGAL.afiliacion}`,
+  aval: `${IDENTIDAD_LEGAL.reconocimiento} · ${IDENTIDAD_LEGAL.afiliacion} · Desde 2022`,
   cifras: [
     { valor: null, sufijo: "+", etiqueta: "[Deportistas formados]", detalle: "[Texto de apoyo de la cifra.]" },
     { valor: null, sufijo: "", etiqueta: "[Años de trayectoria]", detalle: "[Texto de apoyo de la cifra.]" },

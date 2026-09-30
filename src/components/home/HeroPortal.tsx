@@ -22,7 +22,8 @@ import type { EntradaDeportes, EntradaPortada } from "@/features/sitio/schemas";
  * este componente sepa qué diapositiva está activa y le sincronice el texto.
  *
  * Elementos que NO vienen de `carrusel_slide` y se quedan fijos, superpuestos
- * sobre la imagen que cambia: los dos Badge, la tarjeta "Deportes de la
+ * sobre la imagen que cambia: el Badge (un solo campo editable,
+ * `portada.etiquetaEntidad`), la tarjeta "Deportes de la
  * corporación" y la línea de aval ("Reconocimiento deportivo..."). Decisión
  * explícita de Samuel, no mía.
  *
@@ -91,10 +92,7 @@ export function HeroPortal({
           mano en los dos hijos que sí tienen algo clicable. */}
       <div className="contenedor relative grid gap-8 py-12 pointer-events-none sm:py-16 lg:grid-cols-[3fr_2fr] lg:items-start lg:gap-12 lg:py-20">
         <div>
-          <div className="flex flex-wrap gap-2">
-            <Badge tono="solido">{portada.etiquetaEntidad}</Badge>
-            <Badge tono="claro">{deportes.map((d) => d.nombre).join(" · ")}</Badge>
-          </div>
+          <Badge tono="solido">{portada.etiquetaEntidad}</Badge>
 
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
@@ -124,7 +122,7 @@ export function HeroPortal({
                       Ver matrículas
                     </Boton>
                     <Boton href="/semilleros" tamano="lg" variante="secundario" fondo="oscuro">
-                      Conocer los semilleros
+                      Conocer los niveles
                     </Boton>
                   </>
                 )}
