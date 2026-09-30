@@ -42,7 +42,13 @@ function navegacionConClubes(clubes: ClubMenu[]): EnlaceNav[] {
 
 /** Cabecera azul profundo, pegada arriba, con submenú y menú móvil a pantalla completa. */
 export function Header({ clubes }: { clubes: ClubMenu[] }) {
-  const ruta = usePathname();
+  // ponytail: cuando Vercel regenera la portada por revalidatePath (guardados del
+  // panel), Next la renderiza con la ruta interna "/index" (payload "c":["","index"])
+  // y el navegador hidrata en "/": "Corporación" no salía activa en el servidor y
+  // React lanzaba el #418. Se normaliza aquí; quitarlo si una versión de Next deja
+  // de exponer "/index" en usePathname.
+  const crudo = usePathname();
+  const ruta = crudo === "/index" ? "/" : crudo;
   const navegacion = useMemo(() => navegacionConClubes(clubes), [clubes]);
   const [menuMovil, setMenuMovil] = useState(false);
   const [submenuAbierto, setSubmenuAbierto] = useState<string | null>(null);
