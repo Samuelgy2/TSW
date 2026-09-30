@@ -235,7 +235,7 @@ export async function quitarLogoClub(id: string): Promise<ResultadoEscritura> {
 // --- Deportes (migración 22) ---------------------------------------------------
 
 /**
- * El selector del panel (nombres, marca "· inactivo") vive en el layout del
+ * El selector del panel (solo deportes activos) vive en el layout del
  * panel, y el hero, las tarjetas y el carrusel en la portada: cualquier cambio
  * de un deporte revalida ambos.
  */

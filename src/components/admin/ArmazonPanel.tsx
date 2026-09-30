@@ -22,8 +22,8 @@ const CLAVE_GRUPOS = "tsw.panel.grupos";
  *
  * Con el cambio de alcance multideporte lleva también el SelectorDeporte,
  * visible en escritorio y en el cajón móvil. `deporte` y `deportes` llegan del
- * servidor (cookie tsw.deporte y tabla `deporte`, incluidos los inactivos con
- * su marca, más "Marca TSW (todos)"); por ahora es solo un filtro visual: no
+ * servidor (cookie tsw.deporte y tabla `deporte`, solo los activos, más
+ * "Marca TSW (todos)"); por ahora es solo un filtro visual: no
  * filtra consultas porque las demás tablas aún no llevan deporte_id.
  */
 export function ArmazonPanel({

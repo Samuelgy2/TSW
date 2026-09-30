@@ -3,11 +3,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { cache } from "react";
 
-import {
-  OPCIONES_SELECTOR_PANEL,
-  OPCION_TODOS_LOS_DEPORTES,
-  type DeporteMuestra,
-} from "@/features/cuenta/datos-de-muestra";
+import { OPCION_TODOS_LOS_DEPORTES, type DeporteMuestra } from "@/features/cuenta/datos-de-muestra";
 import { crearClienteServidor } from "@/lib/supabase/server";
 
 /**
@@ -18,62 +14,53 @@ import { crearClienteServidor } from "@/lib/supabase/server";
  */
 export const NOMBRE_COOKIE_DEPORTE = "tsw.deporte";
 
-export type OpcionPanel = DeporteMuestra & { activo: boolean };
-
 /**
- * Lo que ve el selector del panel, leído de la tabla `deporte` (migración 22)
- * con la sesión del administrador: la política deja ver también los inactivos.
+ * Lo que ve el selector del panel, leído de la tabla `deporte` (migración 22):
+ * solo los deportes ACTIVOS, en el orden del panel, y al final "Marca TSW
+ * (todos)". Un deporte desactivado no es un contexto en el que se administre:
+ * se reactiva desde la pestaña Deportes de /admin/sitio, que sí lista todos.
  *
- * Orden: activos, luego inactivos con la marca "· inactivo" en el nombre, y al
- * final "Marca TSW (todos)". Los inactivos SE MUESTRAN a propósito: si la
- * cookie apuntara a uno recién desactivado y desapareciera de la lista, el
- * panel caería en silencio a otro deporte sin que el administrador supiera por
- * qué, y no habría dónde reactivarlo desde su propia vista.
+ * El filtro va en la consulta y no solo en RLS (la política con sesión de
+ * administrador deja ver también los inactivos).
  *
  * `cache` = una sola consulta por petición: el layout y cada página piden
- * `deporteActivo()`. Si la lectura falla o la tabla viene vacía, el panel cae
- * a la lista de fábrica en vez de quedarse sin selector.
+ * `deporteActivo()`. Si la lectura falla o no hay ningún deporte activo (la RPC
+ * impide desactivar el último), queda solo "Marca TSW (todos)": mejor un
+ * selector mínimo y cierto que uno con deportes de fábrica que no existen.
  */
-export const listarOpcionesSelectorPanel = cache(async (): Promise<OpcionPanel[]> => {
-  const respaldo = OPCIONES_SELECTOR_PANEL.map((o) => ({ ...o, activo: true }));
+export const listarOpcionesSelectorPanel = cache(async (): Promise<DeporteMuestra[]> => {
   try {
     const supabase = await crearClienteServidor();
     const { data, error } = await supabase
       .from("deporte")
-      .select("slug, nombre, activo")
+      .select("slug, nombre")
+      .eq("activo", true)
       .order("orden")
       .order("creado_en");
 
     if (error) {
       console.error("[deporte] no se pudo leer la tabla para el selector del panel:", error.message);
-      return respaldo;
+      return [OPCION_TODOS_LOS_DEPORTES];
     }
-    if (!data || data.length === 0) return respaldo;
 
-    return [
-      ...data.filter((d) => d.activo).map((d) => ({ id: d.slug, nombre: d.nombre, activo: true })),
-      ...data
-        .filter((d) => !d.activo)
-        .map((d) => ({ id: d.slug, nombre: `${d.nombre} · inactivo`, activo: false })),
-      { ...OPCION_TODOS_LOS_DEPORTES, activo: true },
-    ];
+    return [...(data ?? []).map((d) => ({ id: d.slug, nombre: d.nombre })), OPCION_TODOS_LOS_DEPORTES];
   } catch (error) {
     console.error("[deporte] fallo inesperado leyendo el selector del panel:", error);
-    return respaldo;
+    return [OPCION_TODOS_LOS_DEPORTES];
   }
 });
 
 /**
- * Deporte activo según la cookie. Si falta o trae un id desconocido, cae al
- * primer deporte activo. Acepta también la opción "todos" (marca TSW), que
- * solo existe en el panel.
+ * Deporte activo según la cookie.
+ *  · Sin cookie: el primer deporte activo (el punto de partida del panel).
+ *  · Cookie con un id que ya no está en la lista —un deporte desactivado
+ *    después de elegirlo, o un valor viejo o ajeno—: "Marca TSW (todos)", que
+ *    siempre existe, en vez de saltar en silencio a otro deporte.
  */
-export async function deporteActivo(): Promise<OpcionPanel> {
+export async function deporteActivo(): Promise<DeporteMuestra> {
   const guardado = (await cookies()).get(NOMBRE_COOKIE_DEPORTE)?.value;
   const opciones = await listarOpcionesSelectorPanel();
-  return (
-    opciones.find((o) => o.id === guardado) ??
-    opciones.find((o) => o.activo && o.id !== OPCION_TODOS_LOS_DEPORTES.id) ??
-    opciones[0]!
-  );
+
+  if (guardado === undefined) return opciones[0]!;
+  return opciones.find((o) => o.id === guardado) ?? OPCION_TODOS_LOS_DEPORTES;
 }

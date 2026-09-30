@@ -33,9 +33,6 @@ export const DEPORTE_POR_DEFECTO_ID = "bmx";
  */
 export const OPCION_TODOS_LOS_DEPORTES: DeporteMuestra = { id: "todos", nombre: "Marca TSW (todos)" };
 
-/** Lo que ve el selector del panel: cada deporte y la opción de marca. */
-export const OPCIONES_SELECTOR_PANEL: DeporteMuestra[] = [...DEPORTES_MUESTRA, OPCION_TODOS_LOS_DEPORTES];
-
 // --- Resumen de cuenta (cabecera del área de usuario) -----------------------
 
 export type DeportistaResumen = {
