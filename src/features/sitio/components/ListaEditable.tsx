@@ -142,10 +142,13 @@ export function ListaTextoEditable({
   etiqueta,
   items,
   alCambiar,
+  maximo,
 }: {
   etiqueta: string;
   items: string[];
   alCambiar: (items: string[]) => void;
+  /** Tope de elementos: al alcanzarlo desaparece «Añadir». */
+  maximo?: number;
 }) {
   function actualizar(indice: number, valor: string) {
     alCambiar(items.map((item, i) => (i === indice ? valor : item)));
@@ -170,11 +173,13 @@ export function ListaTextoEditable({
           </Boton>
         </div>
       ))}
-      <div>
-        <Boton variante="secundario" tamano="sm" onClick={() => alCambiar([...items, ""])}>
-          Añadir
-        </Boton>
-      </div>
+      {(maximo === undefined || items.length < maximo) && (
+        <div>
+          <Boton variante="secundario" tamano="sm" onClick={() => alCambiar([...items, ""])}>
+            Añadir
+          </Boton>
+        </div>
+      )}
     </fieldset>
   );
 }

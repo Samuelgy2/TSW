@@ -40,7 +40,12 @@ const INYECTADOS = new Set(["p_actor_id", "p_actor"]);
  * borra el dato. `p_deporte_id` (migración 23): omitirlo quitaba la etiqueta de
  * deporte del slide en cada edición.
  */
-const SIEMPRE = { guardar_slide_carrusel: ["p_deporte_id"] };
+const SIEMPRE = {
+  guardar_slide_carrusel: ["p_deporte_id"],
+  // Migración 160000: sin ellos, cada guardado de un club borraría el subtítulo
+  // de la tarjeta y las viñetas.
+  guardar_club: ["p_subtitulo_tarjeta", "p_vinetas"],
+};
 
 const sinComentarios = (t) => t.replace(/--[^\n]*/g, "");
 

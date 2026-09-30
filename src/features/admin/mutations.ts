@@ -154,6 +154,10 @@ const MENSAJE_POR_CONSTRAINT: Record<string, Traduccion> = {
   // migración 22: deporte
   deporte_slug_formato: validacion("Solo minúsculas, números y guiones en el slug."),
   deporte_nombre_no_vacio: validacion("El nombre no puede quedar vacío."),
+  // migración 160000: club (red de seguridad; la RPC ya valida con su propio mensaje)
+  club_vinetas_maximo: validacion("Un club admite como máximo 4 viñetas."),
+  club_vinetas_sin_vacias: validacion("Hay una viñeta vacía: escribe el texto o quítala."),
+  club_subtitulo_tarjeta_no_vacio: validacion("El texto de la tarjeta no puede ser solo espacios."),
 
   // --- UNIQUE (23505) --------------------------------------------------------
   // migración 02: catálogo

@@ -9,12 +9,13 @@ import type { ClubPanel } from "@/features/admin/queries-contenido";
 import { esquemaClub, type EntradaClub } from "@/features/admin/schemas";
 import { subirDirecto } from "@/features/admin/subir-directo";
 import { MAXIMO_IMAGEN_SITIO_BYTES, MIMES_IMAGEN_SITIO, resolverImagenSitio } from "../imagenes";
+import { ListaTextoEditable } from "./ListaEditable";
 
 type Mensaje = { tono: "exito" | "error"; texto: string } | null;
 
 /**
- * Pestaña "Clubes": datos y logo de cada club. Solo clubes: los programas
- * (Habilidades Motrices) no son clubes y no aparecen aquí.
+ * Pestaña "Clubes": datos y logo de cada club y de los programas (Habilidades
+ * Motrices), porque la portada pinta la tarjeta de los tres desde esta tabla.
  *
  * Datos y logo se guardan por separado, a propósito:
  *  · los datos, con "Guardar club", por `guardar_club` —reemplazo total; el
@@ -48,6 +49,8 @@ function FichaClub({ club }: { club: ClubPanel }) {
     nombre: club.nombre,
     etiqueta: club.etiqueta ?? "",
     descripcion: club.descripcion ?? "",
+    subtituloTarjeta: club.subtitulo_tarjeta ?? "",
+    vinetas: club.vinetas,
     colorIdentidad: club.color_identidad ?? "",
     instagramUrl: club.instagram_url ?? "",
   });
@@ -57,11 +60,16 @@ function FichaClub({ club }: { club: ClubPanel }) {
   const [mensajeDatos, setMensajeDatos] = useState<Mensaje>(null);
   const [mensajeLogo, setMensajeLogo] = useState<Mensaje>(null);
 
-  const cambiar = (campo: keyof EntradaClub) => (valor: string) => setBorrador((b) => ({ ...b, [campo]: valor }));
+  const cambiar = (campo: Exclude<keyof EntradaClub, "vinetas">) => (valor: string) =>
+    setBorrador((b) => ({ ...b, [campo]: valor }));
 
   async function guardar() {
     setMensajeDatos(null);
-    const validado = esquemaClub.safeParse(borrador);
+    // Las viñetas en blanco se descartan: añadir una fila y no escribir nada no es un error.
+    const validado = esquemaClub.safeParse({
+      ...borrador,
+      vinetas: borrador.vinetas.map((v) => v.trim()).filter((v) => v !== ""),
+    });
     if (!validado.success) {
       setMensajeDatos({ tono: "error", texto: validado.error.issues[0]?.message ?? "Revisa los datos." });
       return;
@@ -172,6 +180,19 @@ function FichaClub({ club }: { club: ClubPanel }) {
           rows={5}
           value={borrador.descripcion}
           onChange={(e) => cambiar("descripcion")(e.target.value)}
+        />
+        <Campo
+          etiqueta="Texto de la tarjeta pequeña"
+          ayuda="Va bajo el nombre en la tarjeta de la portada, por ejemplo «El club de la casa»."
+          maxLength={60}
+          value={borrador.subtituloTarjeta}
+          onChange={(e) => cambiar("subtituloTarjeta")(e.target.value)}
+        />
+        <ListaTextoEditable
+          etiqueta="Viñetas de «Nuestros clubes y programa»"
+          items={borrador.vinetas}
+          maximo={4}
+          alCambiar={(vinetas) => setBorrador((b) => ({ ...b, vinetas }))}
         />
         <Campo
           etiqueta="Color de identidad"

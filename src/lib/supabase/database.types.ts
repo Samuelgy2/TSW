@@ -104,7 +104,9 @@ export type Database = {
           nombre: string
           orden: number
           slug: string
+          subtitulo_tarjeta: string | null
           tipo: string
+          vinetas: string[]
         }
         Insert: {
           activo?: boolean
@@ -120,7 +122,9 @@ export type Database = {
           nombre: string
           orden?: number
           slug: string
+          subtitulo_tarjeta?: string | null
           tipo?: string
+          vinetas?: string[]
         }
         Update: {
           activo?: boolean
@@ -136,7 +140,9 @@ export type Database = {
           nombre?: string
           orden?: number
           slug?: string
+          subtitulo_tarjeta?: string | null
           tipo?: string
+          vinetas?: string[]
         }
         Relationships: []
       }
@@ -1158,7 +1164,9 @@ export type Database = {
           p_nombre?: string
           p_orden?: number
           p_slug?: string
+          p_subtitulo_tarjeta?: string
           p_tipo?: string
+          p_vinetas?: string[]
         }
         Returns: {
           activo: boolean
@@ -1174,7 +1182,9 @@ export type Database = {
           nombre: string
           orden: number
           slug: string
+          subtitulo_tarjeta: string | null
           tipo: string
+          vinetas: string[]
         }
         SetofOptions: {
           from: "*"

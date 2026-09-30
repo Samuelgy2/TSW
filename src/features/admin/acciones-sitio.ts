@@ -133,7 +133,7 @@ export async function prepararImagenSitio(mime: string, tamano: number): Promise
  * `guardar_club` es reemplazo total, pero el formulario no expone slug, tipo,
  * deporte ni orden: esos se releen de la fila y se reenvían tal cual. Tomarlos
  * del navegador sería dejar que el cliente los cambie sin pantalla que lo
- * muestre. Solo filas `tipo = 'club'`: un programa no se edita desde aquí.
+ * muestre. Sirve para clubes y para programas (el `tipo` se relee, no se acepta).
  */
 export async function guardarClub(entrada: unknown): Promise<ResultadoEscritura> {
   const datos = esquemaClub.safeParse(entrada);
@@ -150,7 +150,7 @@ export async function guardarClub(entrada: unknown): Promise<ResultadoEscritura>
       .eq("id", c.id)
       .maybeSingle();
     if (error) throw error;
-    if (!actual || actual.tipo !== "club") return { ok: false, error: "El club no existe." };
+    if (!actual) return { ok: false, error: "El club no existe." };
 
     await ejecutarRpc("guardar_club", {
       p_id: c.id,
@@ -163,6 +163,10 @@ export async function guardarClub(entrada: unknown): Promise<ResultadoEscritura>
       p_color_identidad: c.colorIdentidad,
       p_instagram_url: c.instagramUrl,
       p_orden: actual.orden,
+      // Reemplazo total: van SIEMPRE, aunque la RPC les dé default. Omitirlos
+      // equivale a borrarlos (verificar:parametros lo exige).
+      p_subtitulo_tarjeta: c.subtituloTarjeta,
+      p_vinetas: c.vinetas,
     });
 
     // El nombre y la etiqueta salen en el menú de clubes del layout, o sea en

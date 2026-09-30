@@ -41,6 +41,12 @@ export const esquemaClub = z.object({
     .refine((texto) => !/<[a-z!/]/i.test(texto), { message: "No se permite formato HTML en este campo." }),
   etiqueta: TEXTO_SEGURO("Etiqueta", 80),
   descripcion: TEXTO_SEGURO("Descripción", 1200),
+  /** Texto corto de la tarjeta pequeña de la portada. Vacío = sin subtítulo. */
+  subtituloTarjeta: TEXTO_SEGURO("Texto de la tarjeta pequeña", 60),
+  /** Hasta 4 puntos cortos; el formulario descarta los vacíos antes de validar. */
+  vinetas: z
+    .array(TEXTO_SEGURO("Viñeta", 120).refine((texto) => texto.trim() !== "", { message: "Hay una viñeta vacía." }))
+    .max(4, "Un club admite como máximo 4 viñetas."),
   colorIdentidad: z
     .string()
     .trim()

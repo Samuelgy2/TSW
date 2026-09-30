@@ -128,14 +128,17 @@ export type ClubPanel = {
   activo: boolean;
   etiqueta: string | null;
   descripcion: string | null;
+  subtitulo_tarjeta: string | null;
+  vinetas: string[];
   color_identidad: string | null;
   instagram_url: string | null;
   logo_path: string | null;
 };
 
 /**
- * Los clubes, activos o no, para la pestaña "Clubes". Solo `tipo = 'club'`:
- * Habilidades Motrices es un programa, no un club, y no se edita aquí. Con la
+ * Los clubes y programas, activos o no, para la pestaña "Clubes". Desde que la
+ * portada pinta la tarjeta de Habilidades Motrices con su subtítulo y sus
+ * viñetas, el programa también se edita aquí. Con la
  * sesión del administrador: la lectura con sesión de `club` exige es_admin()
  * (migración 17).
  */
@@ -144,8 +147,7 @@ export async function clubesParaPanel(): Promise<ClubPanel[]> {
   const supabase = await crearClienteServidor();
   const { data, error } = await supabase
     .from("club")
-    .select("id, nombre, activo, etiqueta, descripcion, color_identidad, instagram_url, logo_path")
-    .eq("tipo", "club")
+    .select("id, nombre, activo, etiqueta, descripcion, subtitulo_tarjeta, vinetas, color_identidad, instagram_url, logo_path")
     .order("orden", { ascending: true });
   if (error) throw error;
   return data ?? [];
