@@ -198,7 +198,7 @@ export const NAVEGACION: EnlaceNav[] = [
 /** Columnas del pie, como en el rediseño: institucional, servicios y sede. */
 export const PIE_INSTITUCIONAL = [
   { etiqueta: "Nuestros pilares", href: "/#titulo-pilares" },
-  { etiqueta: "Nuestros deportes", href: "/#titulo-deportes" },
+  { etiqueta: "Nuestros clubes", href: "/#titulo-clubes" },
   { etiqueta: "Documentos", href: "/#titulo-documentos-portal" },
   // El documento del cliente pide renombrarlo o quitarlo: se llamaba
   // "[Estatutos y reglamentos]" —un placeholder— y llevaba a Matrículas, que

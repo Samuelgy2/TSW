@@ -1,10 +1,12 @@
 import Image from "next/image";
+import Link from "next/link";
 
 import { Aparece } from "@/lib/animaciones";
-import { Card, CardCuerpo, CuentaAscendente, Indicador, ItemDescarga, Seccion, SeccionTitulo, TarjetaDeporte } from "@/components/ui";
+import { Card, CardCuerpo, CuentaAscendente, Indicador, ItemDescarga, LogoClub, Seccion, SeccionTitulo } from "@/components/ui";
+import type { Club } from "@/features/clubes/types";
 import { BUCKET_DOCUMENTOS, type DocumentoConVersion } from "@/features/matriculas/types";
 import { resolverImagenSitio } from "@/features/sitio/imagenes";
-import type { EntradaDeportes, EntradaPortada } from "@/features/sitio/schemas";
+import type { EntradaPortada } from "@/features/sitio/schemas";
 import { urlPublicaStorage } from "@/lib/supabase/storage";
 import { cn, formatearFecha } from "@/lib/utils";
 
@@ -79,34 +81,74 @@ export function PilaresPortal({ portada }: { portada: EntradaPortada }) {
   );
 }
 
-/** Una tarjeta por deporte de la corporación. */
-export function DeportesPortal({ deportes, portada }: { deportes: EntradaDeportes; portada: EntradaPortada }) {
-  // Con dos deportes, dos columnas: una cuadrícula de tres con un hueco se ve rota.
-  const columnas = deportes.length >= 3 ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-2";
+/**
+ * «Nuestros clubes y programa»: una tarjeta por club o programa activo, leída
+ * de la tabla `club` (etiqueta, descripción, viñetas y logo). Reemplaza a la
+ * sección «Nuestros deportes», que leía de `deporte`. La bajada sigue siendo
+ * `portada.deportesBajada` (la clave no se renombra para no mover datos).
+ * Sin clubes no se pinta la sección.
+ */
+export function ClubesPortal({ clubes, portada }: { clubes: Club[]; portada: EntradaPortada }) {
+  if (clubes.length === 0) return null;
+  // Con dos tarjetas, dos columnas: una cuadrícula de tres con un hueco se ve rota.
+  const columnas = clubes.length >= 3 ? "md:grid-cols-3" : "sm:grid-cols-2";
 
   return (
-    <Seccion tituloId="titulo-deportes">
+    <Seccion tituloId="titulo-clubes">
       <Aparece>
-        <SeccionTitulo id="titulo-deportes" bajada={portada.deportesBajada}>
-          Nuestros deportes
+        <SeccionTitulo id="titulo-clubes" bajada={portada.deportesBajada || undefined}>
+          Nuestros clubes y programa
         </SeccionTitulo>
       </Aparece>
       <ul className={cn("mt-8 grid gap-5", columnas)}>
-        {deportes.map((deporte, i) => (
-          <Aparece key={deporte.id} indice={i + 1} como="li">
-            <TarjetaDeporte
-              nombre={deporte.nombre}
-              categoria={deporte.categoria}
-              descripcion={deporte.descripcion}
-              puntos={deporte.puntos}
-              imagen={resolverImagenSitio(deporte.imagen)}
-              href={`/semilleros?deporte=${deporte.id}`}
-              etiquetaEnlace="Ver semilleros"
-              pie={deporte.pie}
-              className="h-full"
-            />
+        {clubes.map((club, i) => {
+          // `?? []`: la página puede desplegarse un instante antes que la migración
+          // 160000; sin la columna, `club.vinetas` llega undefined y no debe romper la portada.
+          const vinetas = club.vinetas ?? [];
+          return (
+          <Aparece key={club.id} indice={i + 1} como="li">
+            <Card className="h-full">
+              <CardCuerpo className="flex h-full flex-col">
+                <div className="flex items-center gap-4">
+                  <LogoClub
+                    nombre={club.nombre}
+                    logoUrl={resolverImagenSitio(club.logo_path)}
+                    color={club.color_identidad}
+                    tamano="md"
+                  />
+                  <div className="min-w-0">
+                    <h3 className="text-xl leading-tight sm:text-2xl">{club.nombre}</h3>
+                    {club.etiqueta && (
+                      <p className="mt-1 text-xs font-bold uppercase tracking-wide text-acento-oscuro">{club.etiqueta}</p>
+                    )}
+                  </div>
+                </div>
+                {club.descripcion && <p className="mt-4 text-sm text-texto-sec">{club.descripcion}</p>}
+                {vinetas.length > 0 && (
+                  <ul className="mt-4 flex flex-1 flex-col gap-1.5 text-sm font-semibold text-azul-profundo">
+                    {vinetas.map((vineta) => (
+                      <li key={vineta} className="flex items-start gap-2">
+                        <span aria-hidden="true" className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-acento-oscuro" />
+                        <span>{vineta}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <Link
+                  href={`/semilleros?club=${club.slug}`}
+                  className="mt-4 inline-flex min-h-[44px] items-center self-start font-semibold text-acento-oscuro underline-offset-4 hover:underline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-foco"
+                >
+                  {club.tipo === "programa" ? "Ver el programa" : "Ver niveles"}
+                  <span className="sr-only">: {club.nombre}</span>
+                  <span aria-hidden="true" className="ml-1">
+                    →
+                  </span>
+                </Link>
+              </CardCuerpo>
+            </Card>
           </Aparece>
-        ))}
+          );
+        })}
       </ul>
     </Seccion>
   );

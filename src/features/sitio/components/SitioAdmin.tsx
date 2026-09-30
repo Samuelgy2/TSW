@@ -293,7 +293,7 @@ function FormularioPortada({ valor, alCambiar }: { valor: EntradaPortada; alCamb
       />
 
       <Campo
-        etiqueta="Bajada de «Nuestros deportes»"
+        etiqueta="Bajada de «Nuestros clubes y programa»"
         value={valor.deportesBajada}
         onChange={(e) => alCambiar({ ...valor, deportesBajada: e.target.value })}
       />

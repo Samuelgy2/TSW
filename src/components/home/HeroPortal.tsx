@@ -9,7 +9,8 @@ import { Badge, Boton, Carrusel } from "@/components/ui";
 import { CARRUSEL_INTERVALO_MS, SITIO } from "@/config/sitio";
 import type { SlideCarrusel } from "@/features/carrusel/types";
 import { resolverImagenSitio } from "@/features/sitio/imagenes";
-import type { EntradaDeportes, EntradaPortada } from "@/features/sitio/schemas";
+import type { Club } from "@/features/clubes/types";
+import type { EntradaPortada } from "@/features/sitio/schemas";
 import { cn } from "@/lib/utils";
 
 /**
@@ -35,17 +36,17 @@ import { cn } from "@/lib/utils";
  * props de animación (regla de `lib/animaciones`).
  */
 export function HeroPortal({
-  deportes,
+  clubes,
   portada,
   slides,
 }: {
-  deportes: EntradaDeportes;
+  clubes: Club[];
   portada: EntradaPortada;
   slides: SlideCarrusel[];
 }) {
   const reducido = useMovimientoReducido();
   const [indiceActivo, setIndiceActivo] = useState(0);
-  // Foco en cualquier parte del hero (CTA, tarjeta de deportes): el slide no
+  // Foco en cualquier parte del hero (CTA, tarjeta de clubes): el slide no
   // debe rotar y desmontar el botón enfocado. Carrusel ya cubre su propio foco.
   const [focoEnHero, setFocoEnHero] = useState(false);
 
@@ -137,23 +138,26 @@ export function HeroPortal({
           <p className="mt-6 text-sm text-blanco/60">{portada.aval}</p>
         </div>
 
+        {clubes.length > 0 && (
         <section
-          aria-labelledby="titulo-hero-deportes"
+          aria-labelledby="titulo-hero-clubes"
           className="pointer-events-auto rounded-lg border border-blanco/15 bg-azul-medio p-5 sm:p-6"
         >
-          <h2 id="titulo-hero-deportes" className="text-xs font-bold uppercase tracking-[0.2em] text-blanco/70">
-            Deportes de la corporación
+          <h2 id="titulo-hero-clubes" className="text-xs font-bold uppercase tracking-[0.2em] text-blanco/70">
+            Clubes y programa
           </h2>
           <ul className="mt-4 flex flex-col divide-y divide-blanco/10">
-            {deportes.map((deporte) => (
-              <li key={deporte.id}>
+            {clubes.map((club) => (
+              <li key={club.id}>
                 <Link
-                  href={`/semilleros?deporte=${deporte.id}`}
+                  href={`/semilleros?club=${club.slug}`}
                   className="group flex min-h-[44px] items-center justify-between gap-4 py-3 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-foco"
                 >
                   <span className="min-w-0">
-                    <span className="block font-display text-lg uppercase leading-tight">{deporte.nombre}</span>
-                    <span className="mt-0.5 block text-sm text-blanco/70">{deporte.categoria}</span>
+                    <span className="block font-display text-lg uppercase leading-tight">{club.nombre}</span>
+                    {club.subtitulo_tarjeta && (
+                      <span className="mt-0.5 block text-sm text-blanco/70">{club.subtitulo_tarjeta}</span>
+                    )}
                   </span>
                   <span
                     aria-hidden="true"
@@ -166,6 +170,7 @@ export function HeroPortal({
             ))}
           </ul>
         </section>
+        )}
       </div>
     </div>
   );

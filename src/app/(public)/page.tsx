@@ -4,7 +4,7 @@ import { HeroPortal } from "@/components/home/HeroPortal";
 import {
   CifrasPortal,
   CitaPortal,
-  DeportesPortal,
+  ClubesPortal,
   DocumentosPortal,
   PilaresPortal,
   SedePortal,
@@ -16,7 +16,8 @@ import { listarSlidesCarrusel } from "@/features/carrusel/queries";
 import { listarCompetenciasConResultados } from "@/features/competencias/queries";
 import { UltimosResultados } from "@/features/competencias/components/UltimosResultados";
 import { listarDocumentosPublicados } from "@/features/matriculas/queries";
-import { obtenerDeportes, obtenerPortada } from "@/features/sitio/queries";
+import { listarClubes } from "@/features/clubes/queries";
+import { obtenerPortada } from "@/features/sitio/queries";
 
 export const metadata: Metadata = {
   description: SITIO.descripcion,
@@ -32,20 +33,25 @@ export const metadata: Metadata = {
  * /semilleros y /tienda, a un clic desde las tarjetas de deporte y el menú.
  */
 export default async function PaginaInicio() {
-  const [competencias, documentos, deportes, portada, slidesCarrusel] = await Promise.all([
+  const [competencias, documentos, clubes, portada, slidesCarrusel] = await Promise.all([
     listarCompetenciasConResultados(),
     listarDocumentosPublicados(),
-    obtenerDeportes(),
+    // Un fallo aquí no puede tumbar la portada: sin clubes, se omiten la tarjeta
+    // del hero y la sección, como hace el menú del layout.
+    listarClubes().catch((error) => {
+      console.error("[portada] no se pudieron leer los clubes:", error);
+      return [];
+    }),
     obtenerPortada(),
     listarSlidesCarrusel(),
   ]);
 
   return (
     <>
-      <HeroPortal deportes={deportes} portada={portada} slides={slidesCarrusel} />
+      <HeroPortal clubes={clubes} portada={portada} slides={slidesCarrusel} />
       <CifrasPortal portada={portada} />
       <PilaresPortal portada={portada} />
-      <DeportesPortal deportes={deportes} portada={portada} />
+      <ClubesPortal clubes={clubes} portada={portada} />
       <UltimosResultados competencias={competencias} />
       <CitaPortal portada={portada} />
       <DocumentosPortal documentos={documentos} />

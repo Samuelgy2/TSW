@@ -95,7 +95,9 @@ export const PORTADA = {
     { id: "etica", titulo: "[Pilar 2: ética y convivencia]", texto: "[Compromisos con deportistas y familias.]", pie: "[Comité o reglamento]" },
     { id: "salud", titulo: "[Pilar 3: salud y bienestar]", texto: "[Acompañamiento médico y físico.]", pie: "[Acompañamiento]" },
   ],
-  deportesBajada: "[Bajada: los deportes que forma la corporación y cómo se organizan.]",
+  // Bajada de «Nuestros clubes y programa» (la clave conserva su nombre viejo).
+  deportesBajada:
+    "La Corporación Deportiva TSW agrupa dos clubes de BMX, cada uno con su propia identidad, y un programa de habilidades motrices. Todos comparten escenarios, valores y un equipo de entrenadores ex atletas y licenciados en deporte.",
   cita: {
     texto: "[Frase institucional de la corporación, una o dos líneas, en palabras de su dirección.]",
     autor: "[NOMBRE]",
