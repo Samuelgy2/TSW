@@ -191,3 +191,20 @@ el segundo es una puerta de cumplimiento legal que debe exigir un commit.
   de una siembra histórica) ni el chequeo que valida ese SQL contra el archivo
   real (`verificar-perfiles.mjs`): cambiar ahí habría hecho que el chequeo
   fallara contra una migración que sigue siendo correcta.
+
+## Carga del contenido definitivo (fase 2, 30-09-2026)
+
+Fuente: [contenido-tsw-por-pagina.md](contenido-tsw-por-pagina.md); inventario en
+`inventario-contenido-fase1.md`.
+
+- **Los cambios hechos por migración de datos dejan `actor_id` NULL en la
+  bitácora**, igual que la siembra de clubes: una migración no tiene actor. Es
+  esperado, no un fallo. Lo que se edite desde el panel sí lleva actor.
+- Cada migración de datos de este bloque compara el valor actual de producción
+  con el leído antes de escribir y aborta sin escribir si difiere.
+- `supabase/pendientes/*.pendiente` son migraciones escritas que NO deben
+  aplicarse todavía (un `db push` no las ve). Vuelven a `supabase/migrations/`
+  con timestamp nuevo cuando se verifique lo que las precede.
+- **Limpieza pendiente** (migración aparte, después): `matriculas.cupos` y
+  `matriculas.cierre` quedan inertes en la fila de `contenido_sitio` cuando el
+  bloque superior de Matrículas pase a ser un array editable.
