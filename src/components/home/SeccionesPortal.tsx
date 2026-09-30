@@ -18,29 +18,29 @@ import { cn, formatearFecha } from "@/lib/utils";
 
 /** Fila de cuatro cifras sobre azul profundo, con cuenta ascendente cuando hay dato. */
 export function CifrasPortal({ portada }: { portada: EntradaPortada }) {
+  // Una cifra sin dato no se pinta: ni número inventado ni marcador a la vista.
+  const cifras = portada.cifras.filter((c) => c.valor !== null);
+  if (cifras.length === 0) return null;
+
   return (
     <Seccion tono="oscuro" tituloId="titulo-cifras" espaciado="compacto" className="border-t border-blanco/10">
       <h2 id="titulo-cifras" className="sr-only">
         Cifras de la corporación
       </h2>
       <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {portada.cifras.map((cifra, i) => (
-          <Aparece key={cifra.etiqueta} indice={i} como="li">
+        {cifras.map((cifra, i) => (
+          <Aparece key={`${i}-${cifra.etiqueta}`} indice={i} como="li">
             <Indicador
               variante="cifra"
               oscuro
               etiqueta={cifra.etiqueta}
               valor={
-                cifra.valor === null ? (
-                  "[CIFRA]"
-                ) : (
-                  <>
-                    <CuentaAscendente hasta={cifra.valor} />
-                    {cifra.sufijo}
-                  </>
-                )
+                <>
+                  <CuentaAscendente hasta={cifra.valor!} />
+                  {cifra.sufijo}
+                </>
               }
-              detalle={cifra.valor === null ? portada.cifraPendiente : cifra.detalle}
+              detalle={cifra.detalle}
               className="h-full"
             />
           </Aparece>

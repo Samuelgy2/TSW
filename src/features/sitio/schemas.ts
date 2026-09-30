@@ -39,10 +39,27 @@ export type EntradaDeportes = z.infer<typeof esquemaDeportes>;
 
 // --- Portada -------------------------------------------------------------------
 
+/**
+ * Lectura, tolerante a propósito: una fila vieja sin cifra (`valor` null) o con
+ * un sufijo largo sigue siendo legible; la portada simplemente la oculta. Si
+ * esta versión fuera la estricta, una sola cifra incompleta haría caer la
+ * sección ENTERA al valor de fábrica.
+ */
 export const esquemaCifraPortada = z.object({
   valor: z.number().finite().nullable(),
   sufijo: z.string().optional(),
   etiqueta: z.string(),
+  detalle: z.string(),
+});
+
+/** Escritura, estricta: lo que el panel deja guardar. Ver `ESQUEMA_ESCRITURA_POR_CLAVE`. */
+export const esquemaCifraPortadaEscritura = z.object({
+  valor: z
+    .number({ required_error: "Cada estadística necesita su cifra.", invalid_type_error: "Cada estadística necesita su cifra." })
+    .int("La cifra debe ser un número entero.")
+    .min(0, "La cifra no puede ser negativa."),
+  sufijo: z.string().trim().max(4, "El sufijo admite 4 caracteres como máximo.").optional(),
+  etiqueta: z.string().trim().min(1, "Cada estadística necesita su etiqueta."),
   detalle: z.string(),
 });
 
@@ -64,7 +81,6 @@ export const esquemaPortada = z.object({
   presentacion: z.string(),
   aval: z.string(),
   cifras: z.array(esquemaCifraPortada),
-  cifraPendiente: z.string(),
   pilaresBajada: z.string(),
   pilares: z.array(esquemaPilar),
   deportesBajada: z.string(),
@@ -166,4 +182,13 @@ export const ESQUEMA_POR_CLAVE = {
   matriculas: esquemaMatriculas,
   semilleros: esquemaSemilleros,
   tienda: esquemaTienda,
+} as const satisfies Record<ClaveContenido, z.ZodType>;
+
+/**
+ * Lo que valida la ESCRITURA. Igual que `ESQUEMA_POR_CLAVE` salvo la portada,
+ * cuyas cifras se exigen completas al guardar (la lectura las tolera).
+ */
+export const ESQUEMA_ESCRITURA_POR_CLAVE = {
+  ...ESQUEMA_POR_CLAVE,
+  portada: esquemaPortada.extend({ cifras: z.array(esquemaCifraPortadaEscritura) }),
 } as const satisfies Record<ClaveContenido, z.ZodType>;

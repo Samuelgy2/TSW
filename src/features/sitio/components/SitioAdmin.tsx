@@ -16,6 +16,7 @@ import { ClubesAdmin } from "./ClubesAdmin";
 import { CarruselAdmin } from "./CarruselAdmin";
 import { DeportesAdmin } from "./DeportesAdmin";
 import type { SlideCarrusel } from "@/features/carrusel/types";
+import { ESQUEMA_ESCRITURA_POR_CLAVE } from "../schemas";
 import type {
   ClaveContenido,
   EntradaMatriculas,
@@ -93,8 +94,13 @@ export function SitioAdmin({
 
   async function guardar() {
     if (esTablaPropia) return;
-    setGuardando(true);
     setMensaje(null);
+    const validacion = ESQUEMA_ESCRITURA_POR_CLAVE[pestana].safeParse(borrador[pestana]);
+    if (!validacion.success) {
+      setMensaje({ tono: "error", texto: validacion.error.issues[0]?.message ?? "Revisa los datos." });
+      return;
+    }
+    setGuardando(true);
     const resultado = await guardarSeccionContenido(pestana, borrador[pestana]);
     setGuardando(false);
     if (resultado.ok) {
@@ -243,25 +249,30 @@ function FormularioPortada({ valor, alCambiar }: { valor: EntradaPortada; alCamb
       />
 
       <ListaEditable
-        etiqueta="Cifras de la franja azul"
+        etiqueta="Estadísticas de la franja azul"
+        etiquetaAnadir="Agregar estadística"
+        reordenable
         items={valor.cifras.map((c, i) => ({ ...c, id: String(i) }))}
         campos={[
-          { clave: "etiqueta", etiqueta: "Etiqueta" },
+          { clave: "etiqueta", etiqueta: "Etiqueta (ej. Deportistas)" },
+          { clave: "valor", etiqueta: "Cifra", numerico: true, maxLength: 9 },
+          { clave: "sufijo", etiqueta: "Sufijo (ej. + o %)", maxLength: 4 },
           { clave: "detalle", etiqueta: "Detalle" },
-          { clave: "sufijo", etiqueta: "Sufijo (opcional, ej. +)" },
         ]}
         crearVacio={() => ({ id: String(valor.cifras.length), valor: null, sufijo: "", etiqueta: "", detalle: "" })}
+        errorDe={(c, clave) =>
+          clave === "valor" && c.valor === null
+            ? "Incompleta: no se muestra en el sitio."
+            : clave === "etiqueta" && !c.etiqueta.trim()
+              ? "Falta la etiqueta."
+              : undefined
+        }
         alCambiar={(cifras) =>
           alCambiar({
             ...valor,
             cifras: cifras.map((c) => ({ valor: c.valor, sufijo: c.sufijo, etiqueta: c.etiqueta, detalle: c.detalle })),
           })
         }
-      />
-      <Campo
-        etiqueta="Texto cuando una cifra sigue sin dato"
-        value={valor.cifraPendiente}
-        onChange={(e) => alCambiar({ ...valor, cifraPendiente: e.target.value })}
       />
 
       <Campo

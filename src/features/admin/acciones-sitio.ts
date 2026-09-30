@@ -12,7 +12,7 @@ import {
 } from "@/features/sitio/imagenes";
 import {
   CLAVES_CONTENIDO,
-  ESQUEMA_POR_CLAVE,
+  ESQUEMA_ESCRITURA_POR_CLAVE,
   type ClaveContenido,
 } from "@/features/sitio/schemas";
 import { ejecutarRpc, revalidarPublico } from "./mutations";
@@ -64,7 +64,7 @@ export async function guardarSeccionContenido(clave: ClaveContenido, valor: unkn
   if (!CLAVES_CONTENIDO.includes(clave)) return { ok: false, error: "Sección inválida." };
   if (clave === DEPORTES_EN_MIGRACION) return { ok: false, error: MENSAJE_DEPORTES_EN_MIGRACION };
 
-  const esquema = ESQUEMA_POR_CLAVE[clave];
+  const esquema = ESQUEMA_ESCRITURA_POR_CLAVE[clave];
   const datos = esquema.safeParse(valor);
   if (!datos.success) {
     return { ok: false, error: datos.error.issues[0]?.message ?? "Revisa los datos." };

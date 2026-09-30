@@ -88,8 +88,6 @@ export const PORTADA = {
     { valor: null, sufijo: "", etiqueta: "[Competencias al año]", detalle: "[Texto de apoyo de la cifra.]" },
     { valor: null, sufijo: "", etiqueta: "[Niveles de formación]", detalle: "[Texto de apoyo de la cifra.]" },
   ] satisfies Cifra[],
-  /** Texto de apoyo cuando una cifra sigue en null. */
-  cifraPendiente: "[Pendiente de confirmar por el club.]",
   pilaresBajada: "[Bajada: cómo entiende la corporación la formación deportiva.]",
   pilares: [
     { id: "formacion", titulo: "[Pilar 1: formación]", texto: "[Qué distingue la metodología de la corporación.]", pie: "[Estándar o aval]" },
