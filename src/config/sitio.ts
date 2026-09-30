@@ -160,6 +160,13 @@ export const TIENDA_QUE_CONFIRMA = TIENDA_MUESTRA_PRECIOS
   : "el club confirma disponibilidad, te da el precio y te indica cómo pagar";
 
 /**
+ * Milisegundos entre diapositivas del carrusel de la portada. Con más de una
+ * diapositiva activa rota sola; el visitante puede pausarla con el botón del
+ * carrusel, y con movimiento reducido no arranca sola (ver `Carrusel`).
+ */
+export const CARRUSEL_INTERVALO_MS = 15_000;
+
+/**
  * Las tres cuentas de Instagram del documento del cliente (22-09-2026). No hay
  * Facebook ni YouTube: los iconos que estaban antes apuntaban a una URL entre
  * corchetes, así que eran enlaces rotos con forma de red social.

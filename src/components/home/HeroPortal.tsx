@@ -6,7 +6,7 @@ import { useState } from "react";
 
 import { AnimatePresence, motion, SUAVIZADO, useMovimientoReducido } from "@/lib/animaciones";
 import { Badge, Boton, Carrusel } from "@/components/ui";
-import { SITIO } from "@/config/sitio";
+import { CARRUSEL_INTERVALO_MS, SITIO } from "@/config/sitio";
 import type { SlideCarrusel } from "@/features/carrusel/types";
 import { resolverImagenSitio } from "@/features/sitio/imagenes";
 import type { EntradaDeportes, EntradaPortada } from "@/features/sitio/schemas";
@@ -54,7 +54,8 @@ export function HeroPortal({
   return (
     <div
       className="relative isolate min-h-[440px] overflow-hidden bg-azul-profundo text-blanco sm:min-h-[520px] lg:min-h-[600px]"
-      onFocusCapture={() => setFocoEnHero(true)}
+      // Foco de teclado, no de clic (mismo criterio que Carrusel).
+      onFocusCapture={(evento) => setFocoEnHero((evento.target as HTMLElement).matches(":focus-visible"))}
       onBlurCapture={(evento) => {
         if (!evento.currentTarget.contains(evento.relatedTarget as Node | null)) setFocoEnHero(false);
       }}
@@ -69,6 +70,7 @@ export function HeroPortal({
                 contenido: <ImagenFondoSlide slide={slide} prioridad={indice === 0} />,
               }))}
               etiqueta="Destacados de la corporación"
+              intervaloMs={CARRUSEL_INTERVALO_MS}
               className="h-full"
               claseDiapositiva="h-full"
               sobreOscuro

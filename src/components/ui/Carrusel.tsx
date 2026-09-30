@@ -63,8 +63,9 @@ export type CarruselProps = {
  * - Las diapositivas no visibles llevan `inert`: el teclado y el lector de
  *   pantalla no llegan a sus botones.
  * - Botón visible de pausa. El avance automático se detiene además con el
- *   cursor encima, con el foco dentro, con la pestaña oculta y con
- *   `prefers-reduced-motion`.
+ *   ratón encima, con el foco de teclado dentro, con la pestaña oculta y con
+ *   `prefers-reduced-motion`. Cualquier navegación manual (flechas, puntos,
+ *   teclas, deslizamiento) reinicia la cuenta.
  * - La pista es `aria-live="polite"` solo cuando no rota sola.
  */
 export function Carrusel({
@@ -93,6 +94,8 @@ export function Carrusel({
   const [cursorDentro, setCursorDentro] = useState(false);
   const [focoDentro, setFocoDentro] = useState(false);
   const [pestanaVisible, setPestanaVisible] = useState(true);
+  /** Sube con cada gesto manual: reinicia el temporizador del avance automático. */
+  const [gestos, setGestos] = useState(0);
 
   const activoPorUsuario = preferencia === "auto" ? !reducido : preferencia === "reproducir";
   const rotando =
@@ -118,6 +121,15 @@ export function Carrusel({
       });
     },
     [total, reducido],
+  );
+
+  /** Navegación del usuario: mueve y reinicia la cuenta, para no saltar justo tras el clic. */
+  const irManual = useCallback(
+    (destino: number) => {
+      setGestos((n) => n + 1);
+      ir(destino);
+    },
+    [ir],
   );
 
   // El índice real sale de la posición de la pista: así el deslizamiento
@@ -155,7 +167,7 @@ export function Carrusel({
     if (!rotando) return;
     const temporizador = window.setInterval(() => ir(indice + 1), intervaloMs);
     return () => window.clearInterval(temporizador);
-  }, [rotando, indice, intervaloMs, ir]);
+  }, [rotando, indice, gestos, intervaloMs, ir]);
 
   useEffect(() => {
     alCambiarIndice?.(indice);
@@ -164,10 +176,10 @@ export function Carrusel({
   function alTeclear(evento: KeyboardEvent<HTMLElement>) {
     if (evento.key === "ArrowRight") {
       evento.preventDefault();
-      ir(indice + 1);
+      irManual(indice + 1);
     } else if (evento.key === "ArrowLeft") {
       evento.preventDefault();
-      ir(indice - 1);
+      irManual(indice - 1);
     }
   }
 
@@ -188,9 +200,13 @@ export function Carrusel({
       aria-roledescription="carrusel"
       aria-label={etiqueta}
       className={cn("relative isolate", className)}
-      onMouseEnter={() => setCursorDentro(true)}
-      onMouseLeave={() => setCursorDentro(false)}
-      onFocusCapture={() => setFocoDentro(true)}
+      // Solo el ratón pausa por "encima": un toque deja un mouseenter emulado
+      // que nunca se va y dejaría el carrusel pausado para siempre en móvil.
+      onPointerEnter={(evento) => evento.pointerType === "mouse" && setCursorDentro(true)}
+      onPointerLeave={(evento) => evento.pointerType === "mouse" && setCursorDentro(false)}
+      // Foco de teclado, no de clic: tras pulsar un punto con el ratón el botón
+      // conserva el foco, y eso no debe congelar la rotación.
+      onFocusCapture={(evento) => setFocoDentro((evento.target as HTMLElement).matches(":focus-visible"))}
       onBlurCapture={(evento) => {
         // Solo cuenta como salida si el nuevo foco queda fuera del carrusel.
         if (!evento.currentTarget.contains(evento.relatedTarget as Node | null)) setFocoDentro(false);
@@ -215,10 +231,12 @@ export function Carrusel({
           zonasToque
             ? (evento) => {
                 const caja = evento.currentTarget.getBoundingClientRect();
-                ir(evento.clientX < caja.left + caja.width / 2 ? indice - 1 : indice + 1);
+                irManual(evento.clientX < caja.left + caja.width / 2 ? indice - 1 : indice + 1);
               }
             : undefined
         }
+        // Un deslizamiento también es navegación manual: reinicia la cuenta.
+        onPointerDown={() => setGestos((n) => n + 1)}
         className="flex h-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {diapositivas.map((diapositiva, i) => (
@@ -241,7 +259,7 @@ export function Carrusel({
         <>
           <button
             type="button"
-            onClick={() => ir(indice - 1)}
+            onClick={() => irManual(indice - 1)}
             aria-label="Diapositiva anterior"
             aria-controls={`${base}-pista`}
             className={cn(
@@ -257,7 +275,7 @@ export function Carrusel({
           </button>
           <button
             type="button"
-            onClick={() => ir(indice + 1)}
+            onClick={() => irManual(indice + 1)}
             aria-label="Diapositiva siguiente"
             aria-controls={`${base}-pista`}
             className={cn(
@@ -284,7 +302,7 @@ export function Carrusel({
                 <button
                   key={diapositiva.id}
                   type="button"
-                  onClick={() => ir(i)}
+                  onClick={() => irManual(i)}
                   aria-label={`Ir a la diapositiva ${i + 1}: ${diapositiva.nombre}`}
                   aria-current={activa ? "true" : undefined}
                   aria-controls={`${base}-${diapositiva.id}`}
