@@ -31,6 +31,18 @@ export const SECCIONES_PANEL: SeccionPanel[] = [
   { href: "/admin/bitacora", etiqueta: "Bitácora", descripcion: "Quién cambió qué y cuándo." },
 ];
 
+/**
+ * Agrupación de la barra lateral. "Inicio" va suelto, arriba, y no pertenece a
+ * ningún grupo. Las pestañas de /admin/sitio (Deportes, Clubes, Carrusel…) no
+ * son rutas, así que no aparecen aquí.
+ */
+export const GRUPOS_PANEL: { id: string; etiqueta: string; hrefs: string[] }[] = [
+  { id: "deportes", etiqueta: "Deportes", hrefs: ["/admin/competencias", "/admin/niveles"] },
+  { id: "sitio", etiqueta: "Sitio", hrefs: ["/admin/sitio", "/admin/documentos"] },
+  { id: "tienda", etiqueta: "Tienda", hrefs: ["/admin/productos", "/admin/pedidos"] },
+  { id: "administracion", etiqueta: "Administración", hrefs: ["/admin/usuarios", "/admin/administradores", "/admin/bitacora"] },
+];
+
 export function seccionDeRuta(ruta: string): SeccionPanel | undefined {
   return SECCIONES_PANEL.find((s) => (s.href === "/admin" ? ruta === "/admin" : ruta.startsWith(s.href)));
 }
