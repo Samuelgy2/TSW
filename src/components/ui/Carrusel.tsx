@@ -51,6 +51,12 @@ export type CarruselProps = {
    * deslizamiento táctil sigue siendo el scroll nativo de la pista.
    */
   zonasToque?: boolean;
+  /**
+   * Dónde van los puntos y el botón de pausa. "arriba" es para el hero de fondo:
+   * mide ~600 px y en un portátil de 590 px de alto el borde de abajo queda
+   * fuera de la ventana, con los controles inalcanzables sin hacer scroll.
+   */
+  controles?: "abajo" | "arriba";
 };
 
 /**
@@ -78,6 +84,7 @@ export function Carrusel({
   alCambiarIndice,
   pausado = false,
   zonasToque = false,
+  controles = "abajo",
 }: CarruselProps) {
   const base = useId();
   const pista = useRef<HTMLDivElement>(null);
@@ -184,7 +191,7 @@ export function Carrusel({
   }
 
   const colorControl = sobreOscuro
-    ? "text-blanco border-blanco/40 hover:bg-blanco/15"
+    ? "text-blanco border-blanco/60 bg-azul-profundo/60 hover:bg-azul-profundo/80"
     : "text-azul-profundo border-azul-profundo/40 hover:bg-azul-profundo/10";
 
   const BOTON_CONTROL =
@@ -294,7 +301,12 @@ export function Carrusel({
 
       {/* Indicadores y pausa. Cada control mide 44 px con 8 px entre ellos. */}
       {total > 1 && (
-        <div className="contenedor absolute inset-x-0 bottom-3 flex items-center justify-between gap-4 sm:bottom-5">
+        <div
+          className={cn(
+            "contenedor absolute inset-x-0 flex items-center justify-between gap-4",
+            controles === "arriba" ? "top-3 sm:top-5" : "bottom-3 sm:bottom-5",
+          )}
+        >
           <div role="group" aria-label="Elegir diapositiva" className="flex items-center gap-2">
             {diapositivas.map((diapositiva, i) => {
               const activa = i === indice;
@@ -315,7 +327,7 @@ export function Carrusel({
                       activa
                         ? "w-8 bg-acento"
                         : sobreOscuro
-                          ? "w-4 bg-blanco/50 group-hover:bg-blanco/80"
+                          ? "w-4 bg-blanco/70 group-hover:bg-blanco"
                           : "w-4 bg-azul-profundo/40 group-hover:bg-azul-profundo/70",
                     )}
                   />

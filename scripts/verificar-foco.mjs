@@ -262,6 +262,10 @@ try {
       vistos.add(dato.etiqueta);
       medidos += 1;
       if (dato.currentColor) conCurrentColor += 1;
+      // DETALLE=1 lista cada elemento medido con su contraste: sirve para
+      // comprobar que un control concreto (por ejemplo el botón de pausa del
+      // carrusel) está entre los medidos y no solo que el total cuadra.
+      if (process.env.DETALLE) console.log(`     ${ruta} · ${dato.etiqueta} → ${dato.contraste}:1`);
 
       const sinAnillo = dato.estiloAnillo === "none" || parseFloat(dato.ancho) === 0;
       if (sinAnillo) {

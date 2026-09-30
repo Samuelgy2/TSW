@@ -10,6 +10,7 @@ import { CARRUSEL_INTERVALO_MS, SITIO } from "@/config/sitio";
 import type { SlideCarrusel } from "@/features/carrusel/types";
 import { resolverImagenSitio } from "@/features/sitio/imagenes";
 import type { EntradaDeportes, EntradaPortada } from "@/features/sitio/schemas";
+import { cn } from "@/lib/utils";
 
 /**
  * Portada de la corporación, fusionada con el carrusel editable (migración 21):
@@ -77,12 +78,9 @@ export function HeroPortal({
               alCambiarIndice={setIndiceActivo}
               pausado={focoEnHero}
               zonasToque
+              controles="arriba"
             />
           </div>
-          {/* Degradado para que el texto tenga AA sobre cualquier foto que suba
-              el club, sin depender de qué tan oscura sea. pointer-events-none:
-              no debe robarle clics a los controles del carrusel ni a los CTA. */}
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-azul-profundo via-azul-profundo/70 to-azul-profundo/25" />
         </>
       )}
 
@@ -92,7 +90,11 @@ export function HeroPortal({
           hueco debajo. Sin este corte, ese hueco transparente le robaría los
           clics al carrusel aunque no se note a simple vista. Se reactiva a
           mano en los dos hijos que sí tienen algo clicable. */}
-      <div className="contenedor relative grid gap-8 py-12 pointer-events-none sm:py-16 lg:grid-cols-[3fr_2fr] lg:items-start lg:gap-12 lg:py-20">
+      <div className={cn(
+          "contenedor relative grid gap-8 py-12 pointer-events-none sm:py-16 lg:grid-cols-[3fr_2fr] lg:items-start lg:gap-12 lg:py-20",
+          // Deja sitio arriba a los puntos y al botón de pausa del carrusel.
+          tieneSlides && "pt-16 sm:pt-20",
+        )}>
         <div>
           <Badge tono="solido">{portada.etiquetaEntidad}</Badge>
 
@@ -172,5 +174,16 @@ export function HeroPortal({
 function ImagenFondoSlide({ slide, prioridad }: { slide: SlideCarrusel; prioridad: boolean }) {
   const url = resolverImagenSitio(slide.imagen_path);
   if (!url) return null;
-  return <Image src={url} alt="" fill sizes="100vw" priority={prioridad} className="object-cover" />;
+  return (
+    <>
+      <Image src={url} alt="" fill sizes="100vw" priority={prioridad} className="object-cover" />
+      {/* Los degradados viven DENTRO de la diapositiva y no encima del carrusel:
+          así los controles (puntos, pausa, flechas) quedan por encima y no
+          bajo una capa casi opaca. El de abajo da AA al texto sobre cualquier
+          foto; el de arriba, contraste a los controles. pointer-events-none
+          para no robar clics a la pista. */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-azul-profundo via-azul-profundo/70 to-azul-profundo/25" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-azul-profundo/70 to-transparent" />
+    </>
+  );
 }
