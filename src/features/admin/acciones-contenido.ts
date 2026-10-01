@@ -3,6 +3,7 @@
 import { exigirAdmin } from "@/lib/auth";
 import { ErrorApp } from "@/lib/errors";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
+import { BUCKET_SITIO, MAXIMO_IMAGEN_SITIO_BYTES, MIMES_IMAGEN_SITIO } from "@/features/sitio/imagenes";
 import { ejecutarRpc, revalidarPublico } from "./mutations";
 import {
   descartarSubida,
@@ -315,7 +316,7 @@ export async function eliminarResultado(id: string): Promise<ResultadoEscritura>
 
 // --- Niveles ------------------------------------------------------------------
 
-export async function guardarNivel(entrada: EntradaNivel): Promise<ResultadoEscritura> {
+export async function guardarNivel(entrada: EntradaNivel): Promise<ResultadoEscritura & { id?: string }> {
   const datos = esquemaNivel.safeParse(entrada);
   if (!datos.success) {
     return { ok: false, error: Object.values(camposDeZod(datos.error))[0] ?? "Revisa los datos." };
@@ -323,7 +324,7 @@ export async function guardarNivel(entrada: EntradaNivel): Promise<ResultadoEscr
 
   try {
     const n = datos.data;
-    await ejecutarRpc("guardar_nivel", {
+    const fila = await ejecutarRpc("guardar_nivel", {
       p_id: n.id,
       // Obligatorio desde la migración 17. TypeScript no lo exige porque la
       // RPC le puso DEFAULT null al parámetro, pero la función lanza «Falta el
@@ -340,7 +341,7 @@ export async function guardarNivel(entrada: EntradaNivel): Promise<ResultadoEscr
       p_activo: n.activo,
     });
     revalidarPublico("nivel");
-    return { ok: true, mensaje: n.id ? "Nivel actualizado." : "Nivel creado." };
+    return { ok: true, mensaje: n.id ? "Nivel actualizado." : "Nivel creado.", id: fila.id };
   } catch (error) {
     return { ok: false, error: mensajeDe(error) };
   }
@@ -373,6 +374,77 @@ export async function alternarNivel(id: string, activo: boolean): Promise<Result
     await ejecutarRpc("alternar_nivel_activo", { p_id: id, p_activo: activo });
     revalidarPublico("nivel");
     return { ok: true, mensaje: activo ? "Nivel activado." : "Nivel desactivado." };
+  } catch (error) {
+    return { ok: false, error: mensajeDe(error) };
+  }
+}
+
+// --- Imagen del nivel ----------------------------------------------------------
+
+const OPCIONES_IMAGEN_NIVEL = { mimesPermitidos: MIMES_IMAGEN_SITIO, maximoBytes: MAXIMO_IMAGEN_SITIO_BYTES };
+const UUID_NIVEL = /^[0-9a-f-]{36}$/i;
+const RUTA_IMAGEN_NIVEL = /^niveles\/[0-9a-f-]{36}\.(jpg|png|webp)$/;
+
+/** Ruta que tiene hoy el nivel, para borrar el archivo viejo al reemplazar o quitar. */
+async function imagenActualDeNivel(id: string): Promise<string | null> {
+  const { data } = await crearClienteAdmin().from("nivel").select("imagen_path").eq("id", id).maybeSingle();
+  return data?.imagen_path ?? null;
+}
+
+/** Paso 1 de la imagen de un nivel: tipo y tamaño declarados, ruta con UUID, URL firmada. */
+export async function prepararImagenNivel(id: string, mime: string, tamano: number): Promise<SubidaPreparada> {
+  try {
+    await exigirAdmin();
+    if (!UUID_NIVEL.test(id)) return { ok: false, error: "Nivel inválido." };
+    const invalido = validarDeclarado(mime, tamano, OPCIONES_IMAGEN_NIVEL);
+    if (invalido) return { ok: false, error: invalido };
+
+    const ruta = `niveles/${crypto.randomUUID()}.${extensionDe(mime)}`;
+    return { ok: true, bucket: BUCKET_SITIO, ruta, token: await firmarSubida(BUCKET_SITIO, ruta) };
+  } catch (error) {
+    return { ok: false, error: mensajeDe(error) };
+  }
+}
+
+/**
+ * Paso 3: verifica el archivo ya subido y solo entonces lo fija con
+ * `establecer_imagen_nivel`. Si la RPC falla, el archivo nuevo se borra; si
+ * sale bien, se borra el anterior (bucket público: un archivo sin fila no está
+ * huérfano, está publicado).
+ */
+export async function confirmarImagenNivel(id: string, ruta: string): Promise<ResultadoEscritura & { ruta?: string }> {
+  try {
+    await exigirAdmin();
+    if (!UUID_NIVEL.test(id)) return { ok: false, error: "Nivel inválido." };
+    if (!RUTA_IMAGEN_NIVEL.test(ruta)) return { ok: false, error: "Ruta de imagen inválida." };
+
+    const verificada = await verificarSubida(BUCKET_SITIO, ruta, OPCIONES_IMAGEN_NIVEL);
+    if (!verificada.ok) return verificada;
+
+    const anterior = await imagenActualDeNivel(id);
+    try {
+      await ejecutarRpc("establecer_imagen_nivel", { p_id: id, p_imagen_path: ruta });
+    } catch (error) {
+      await descartarSubida(BUCKET_SITIO, ruta);
+      throw error;
+    }
+    if (anterior && anterior !== ruta && RUTA_IMAGEN_NIVEL.test(anterior)) await descartarSubida(BUCKET_SITIO, anterior);
+    revalidarPublico("nivel");
+    return { ok: true, mensaje: "Imagen cargada.", ruta };
+  } catch (error) {
+    return { ok: false, error: mensajeDe(error) };
+  }
+}
+
+/** Quita la imagen: la tarjeta vuelve al marcador y el archivo se borra del bucket. */
+export async function quitarImagenNivel(id: string): Promise<ResultadoEscritura> {
+  try {
+    if (!UUID_NIVEL.test(id)) return { ok: false, error: "Nivel inválido." };
+    const anterior = await imagenActualDeNivel(id);
+    await ejecutarRpc("establecer_imagen_nivel", { p_id: id, p_imagen_path: "" });
+    if (anterior && RUTA_IMAGEN_NIVEL.test(anterior)) await descartarSubida(BUCKET_SITIO, anterior);
+    revalidarPublico("nivel");
+    return { ok: true, mensaje: "Imagen quitada." };
   } catch (error) {
     return { ok: false, error: mensajeDe(error) };
   }

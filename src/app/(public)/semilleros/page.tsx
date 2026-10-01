@@ -139,7 +139,7 @@ export default async function PaginaSemilleros({ searchParams }: Props) {
       {esPrograma ? (
         <BloquePrograma club={club} />
       ) : (
-        <BloqueNiveles niveles={niveles} cifras={semilleros.cifras} />
+        <BloqueNiveles niveles={niveles} clubNombre={club.nombre} cifras={semilleros.cifras} />
       )}
 
       <Seccion tono="claro" tituloId="titulo-preguntas">
@@ -177,9 +177,11 @@ export default async function PaginaSemilleros({ searchParams }: Props) {
 /** Los niveles de un club, con las cifras de la metodología encima. */
 function BloqueNiveles({
   niveles,
+  clubNombre,
   cifras,
 }: {
   niveles: Awaited<ReturnType<typeof listarNiveles>>;
+  clubNombre: string;
   cifras: EntradaSemilleros["cifras"];
 }) {
   return (
@@ -220,7 +222,7 @@ function BloqueNiveles({
               cómo está organizada la formación.
             </p>
           ) : (
-            <FichaNiveles niveles={niveles} />
+            <FichaNiveles niveles={niveles} clubNombre={clubNombre} />
           )}
         </Aparece>
       </Seccion>

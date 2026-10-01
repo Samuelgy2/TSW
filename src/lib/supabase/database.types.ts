@@ -393,6 +393,7 @@ export type Database = {
           descripcion: string | null
           horario: string | null
           id: string
+          imagen_path: string | null
           nombre: string
           orden: number
           rango_edad: string | null
@@ -407,6 +408,7 @@ export type Database = {
           descripcion?: string | null
           horario?: string | null
           id?: string
+          imagen_path?: string | null
           nombre: string
           orden: number
           rango_edad?: string | null
@@ -421,6 +423,7 @@ export type Database = {
           descripcion?: string | null
           horario?: string | null
           id?: string
+          imagen_path?: string | null
           nombre?: string
           orden?: number
           rango_edad?: string | null
@@ -871,6 +874,7 @@ export type Database = {
           descripcion: string | null
           horario: string | null
           id: string
+          imagen_path: string | null
           nombre: string
           orden: number
           rango_edad: string | null
@@ -1078,6 +1082,30 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "deporte"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      establecer_imagen_nivel: {
+        Args: { p_actor_id: string; p_id: string; p_imagen_path: string }
+        Returns: {
+          activo: boolean
+          actualizado_en: string
+          club_id: string
+          creado_en: string
+          criterio_promocion: string | null
+          cupo_maximo: number | null
+          descripcion: string | null
+          horario: string | null
+          id: string
+          imagen_path: string | null
+          nombre: string
+          orden: number
+          rango_edad: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "nivel"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -1320,6 +1348,7 @@ export type Database = {
           descripcion: string | null
           horario: string | null
           id: string
+          imagen_path: string | null
           nombre: string
           orden: number
           rango_edad: string | null

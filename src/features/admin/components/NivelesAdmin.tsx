@@ -1,14 +1,25 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
-import { Aviso, AreaTexto, Boton, Campo, ChipEstado, Modal, Select } from "@/components/ui";
+import { Archivo, Aviso, AreaTexto, Boton, Campo, ChipEstado, Modal, Select } from "@/components/ui";
 import type { Club } from "@/features/clubes/types";
-import { alternarNivel, guardarNivel, reordenarNiveles } from "../acciones-contenido";
+import { MAXIMO_IMAGEN_SITIO_BYTES, MIMES_IMAGEN_SITIO, resolverImagenSitio } from "@/features/sitio/imagenes";
+import {
+  alternarNivel,
+  confirmarImagenNivel,
+  guardarNivel,
+  prepararImagenNivel,
+  quitarImagenNivel,
+  reordenarNiveles,
+} from "../acciones-contenido";
+import { subirDirecto } from "../subir-directo";
 import type { Nivel } from "../types";
 
-type ResultadoAccion = { ok: boolean; error?: string; mensaje?: string };
+type ResultadoAccion = { ok: boolean; error?: string; mensaje?: string; id?: string };
+const OPCIONES_IMAGEN = { mimesPermitidos: MIMES_IMAGEN_SITIO, maximoBytes: MAXIMO_IMAGEN_SITIO_BYTES };
 
 /**
  * Módulo de niveles.
@@ -168,6 +179,7 @@ export function NivelesAdmin({ niveles, clubes }: { niveles: Nivel[]; clubes: Cl
       ))}
 
       <ModalNivel
+        key={editando === "nuevo" ? "nuevo" : (editando?.id ?? "cerrado")}
         nivel={editando}
         clubes={clubes}
         alCerrar={() => setEditando(null)}
@@ -219,6 +231,54 @@ function ModalNivel({
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
 
+  // Imagen. En un nivel que ya existe se sube y se quita al instante, sin
+  // esperar a "Guardar" (como la foto de un deporte). En uno nuevo no hay id
+  // todavía: el archivo espera aquí y sube justo después de crear el nivel.
+  const [rutaImagen, setRutaImagen] = useState<string | null>(existente?.imagen_path ?? null);
+  const [pendiente, setPendiente] = useState<File | null>(null);
+  const [vistaPendiente, setVistaPendiente] = useState<string | null>(null);
+  const [trabajandoImagen, setTrabajandoImagen] = useState(false);
+  const [errorImagen, setErrorImagen] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!pendiente) return setVistaPendiente(null);
+    const url = URL.createObjectURL(pendiente);
+    setVistaPendiente(url);
+    return () => URL.revokeObjectURL(url);
+  }, [pendiente]);
+
+  const urlImagen = vistaPendiente ?? resolverImagenSitio(rutaImagen);
+
+  async function elegirImagen(archivo: File | null) {
+    // `Archivo` avisa con null cuando el elegido no pasó su validación.
+    if (!archivo) return;
+    setErrorImagen(null);
+    if (!existente) return setPendiente(archivo);
+
+    setTrabajandoImagen(true);
+    const resultado = await subirDirecto(
+      archivo,
+      OPCIONES_IMAGEN,
+      (mime, tamano) => prepararImagenNivel(existente.id, mime, tamano),
+      (ruta) => confirmarImagenNivel(existente.id, ruta),
+    );
+    setTrabajandoImagen(false);
+    if (!resultado.ok) return setErrorImagen(resultado.error);
+    setRutaImagen(resultado.ruta ?? rutaImagen);
+    onGuardado({ ok: true, mensaje: resultado.mensaje });
+  }
+
+  async function quitarImagen() {
+    setErrorImagen(null);
+    if (!existente || !rutaImagen) return setPendiente(null);
+    setTrabajandoImagen(true);
+    const resultado = await quitarImagenNivel(existente.id);
+    setTrabajandoImagen(false);
+    if (!resultado.ok) return setErrorImagen(resultado.error);
+    setRutaImagen(null);
+    onGuardado({ ok: true, mensaje: resultado.mensaje });
+  }
+
   async function guardar() {
     setError(null);
     if (!clubId) return setError("Elige el club al que pertenece el nivel.");
@@ -243,6 +303,21 @@ function ModalNivel({
       criterioPromocion: criterio.trim() || undefined,
       activo,
     });
+    // Nivel nuevo con imagen en espera: ya hay id, ahora sí sube.
+    if (resultado.ok && !existente && pendiente && resultado.id) {
+      const id = resultado.id;
+      const subida = await subirDirecto(
+        pendiente,
+        OPCIONES_IMAGEN,
+        (mime, tamano) => prepararImagenNivel(id, mime, tamano),
+        (ruta) => confirmarImagenNivel(id, ruta),
+      );
+      if (!subida.ok) {
+        setCargando(false);
+        onGuardado({ ok: true, mensaje: `Nivel creado, pero la imagen no se subió: ${subida.error} Edita el nivel para reintentar.` });
+        return alCerrar();
+      }
+    }
     setCargando(false);
     onGuardado(resultado);
     if (resultado.ok) alCerrar();
@@ -301,6 +376,29 @@ function ModalNivel({
           maxLength={500}
           ayuda="Qué debe lograr el deportista para pasar al siguiente nivel."
         />
+        <div className="flex flex-col gap-3">
+          <span className="text-sm font-semibold text-azul-profundo">Imagen del nivel</span>
+          {urlImagen && (
+            <div className="relative aspect-4/3 w-full max-w-xs overflow-hidden rounded-md border border-gris-borde bg-gris-frio">
+              <Image src={urlImagen} alt="" fill unoptimized={vistaPendiente !== null} sizes="320px" className="object-cover" />
+            </div>
+          )}
+          <Archivo
+            etiqueta={trabajandoImagen ? "Subiendo…" : urlImagen ? "Reemplazar imagen" : "Elegir imagen"}
+            mimesPermitidos={MIMES_IMAGEN_SITIO}
+            descripcionTipos="JPG, PNG o WebP"
+            maximoBytes={MAXIMO_IMAGEN_SITIO_BYTES}
+            ayuda={esNuevo ? "Hasta 10 MB. Se sube al crear el nivel." : "Hasta 10 MB. Se aplica al instante."}
+            error={errorImagen ?? undefined}
+            disabled={trabajandoImagen || cargando}
+            alSeleccionar={elegirImagen}
+          />
+          {(rutaImagen || pendiente) && (
+            <Boton variante="fantasma" tamano="sm" onClick={quitarImagen} disabled={trabajandoImagen || cargando}>
+              Quitar imagen
+            </Boton>
+          )}
+        </div>
         <label className="flex min-h-[44px] items-center gap-3 text-sm">
           <input type="checkbox" checked={activo} onChange={(e) => setActivo(e.target.checked)} className="h-5 w-5 accent-acento-oscuro" />
           Nivel activo (visible en el sitio público)

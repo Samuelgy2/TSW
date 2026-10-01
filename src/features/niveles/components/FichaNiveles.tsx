@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { motion, useMovimientoReducido } from "@/lib/animaciones";
 import { Badge, Boton, Card, CardCuerpo, EstadoVacio, Tabs } from "@/components/ui";
+import { resolverImagenSitio } from "@/features/sitio/imagenes";
 import type { Nivel } from "../types";
 
 /**
@@ -12,7 +13,7 @@ import type { Nivel } from "../types";
  * la pestaña; los niveles llegan ya leídos desde el servidor. En móvil las
  * pestañas se desplazan en horizontal: es el comportamiento de `Tabs`.
  */
-export function FichaNiveles({ niveles }: { niveles: Nivel[] }) {
+export function FichaNiveles({ niveles, clubNombre }: { niveles: Nivel[]; clubNombre: string }) {
   const reducido = useMovimientoReducido();
   const [activoId, setActivoId] = useState(niveles[0]?.id ?? "");
   const indice = Math.max(
@@ -51,10 +52,10 @@ export function FichaNiveles({ niveles }: { niveles: Nivel[] }) {
         <Card>
           <div className="grid gap-0 lg:grid-cols-[minmax(0,26rem)_1fr]">
             <div className="relative aspect-4/3 overflow-hidden rounded-t-lg bg-gris-frio lg:aspect-auto lg:min-h-full lg:rounded-l-lg lg:rounded-tr-none">
-              {/* Marcador: las fotos reales de cada nivel se cargan con el mismo nombre. */}
+              {/* Sin imagen cargada en el panel, queda el marcador de siempre. */}
               <Image
-                src={`/imagenes/nivel-${(indice % 4) + 1}.jpg`}
-                alt={`[Describir la foto del nivel ${nivel.nombre}]`}
+                src={resolverImagenSitio(nivel.imagen_path) ?? `/imagenes/nivel-${(indice % 4) + 1}.jpg`}
+                alt={nivel.imagen_path ? `Nivel ${nivel.nombre} de ${clubNombre}` : `[Describir la foto del nivel ${nivel.nombre}]`}
                 fill
                 sizes="(min-width: 1024px) 26rem, 100vw"
                 className="object-cover"
