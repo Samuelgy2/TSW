@@ -129,6 +129,22 @@ export async function alternarProducto(id: string, activo: boolean): Promise<Res
   }
 }
 
+/**
+ * Eliminar de verdad, solo si nunca se vendió: la RPC rechaza con mensaje claro
+ * si hay pedidos. La foto del bucket público se borra después, ya sin fila.
+ */
+export async function eliminarProducto(id: string): Promise<ResultadoEscritura> {
+  if (!UUID.test(id)) return { ok: false, error: "Producto inválido." };
+  try {
+    const imagen = await ejecutarRpc("eliminar_producto", { p_id: id });
+    if (imagen) await descartarSubida(BUCKET_PRODUCTOS, imagen);
+    revalidarPublico("producto");
+    return { ok: true, mensaje: "Producto eliminado." };
+  } catch (error) {
+    return { ok: false, error: mensajeDe(error) };
+  }
+}
+
 // --- Variantes -----------------------------------------------------------------
 
 export async function guardarVariante(entrada: EntradaVariantePanel, productoId: string): Promise<ResultadoEscritura> {

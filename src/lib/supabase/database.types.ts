@@ -812,7 +812,9 @@ export type Database = {
           nombre: string
           orden: number
           slug: string
+          subtitulo_tarjeta: string | null
           tipo: string
+          vinetas: string[]
         }
         SetofOptions: {
           from: "*"
@@ -1030,6 +1032,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      eliminar_producto: {
+        Args: { p_actor_id: string; p_id: string }
+        Returns: string
+      }
       eliminar_resultado: {
         Args: { p_actor_id: string; p_id: string }
         Returns: undefined
@@ -1170,7 +1176,9 @@ export type Database = {
           nombre: string
           orden: number
           slug: string
+          subtitulo_tarjeta: string | null
           tipo: string
+          vinetas: string[]
         }
         SetofOptions: {
           from: "*"
