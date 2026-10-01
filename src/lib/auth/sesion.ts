@@ -7,8 +7,10 @@ import { crearClienteServidor } from "@/lib/supabase/server";
 import { ErrorNoAutorizado } from "@/lib/errors";
 import {
   RUTA_ACCESO_USUARIO,
+  RUTA_ACTIVAR_MFA,
   RUTA_LOGIN,
   RUTA_PANEL,
+  RUTA_VERIFICAR_MFA,
   esRutaAdminPublica,
   esRutaCuentaPublica,
 } from "./rutas";
@@ -90,6 +92,31 @@ export async function obtenerPerfil(): Promise<Sesion | null> {
 }
 
 /**
+ * Segundo factor (TOTP) de los administradores, obligatorio:
+ *  · "ok"        sesión en nivel aal2 (o MFA apagado, ver abajo).
+ *  · "verificar" tiene factor activado pero esta sesión solo pasó la contraseña
+ *                (o el código de correo): falta el código de la app.
+ *  · "activar"   todavía no tiene factor: debe activarlo antes de usar el panel.
+ *
+ * Se lee DESPUÉS de `obtenerUsuario` (getUser valida el token contra Auth), y
+ * ante cualquier error responde "verificar": nunca abre por fallo.
+ *
+ * `ADMIN_MFA_OBLIGATORIO=false` lo apaga: red de seguridad por si un
+ * administrador queda fuera y hay que entrar a repararlo. Cualquier otro valor,
+ * o ausente, lo deja obligatorio.
+ */
+export type EstadoMfa = "ok" | "verificar" | "activar";
+
+export async function estadoMfa(): Promise<EstadoMfa> {
+  if (process.env.ADMIN_MFA_OBLIGATORIO === "false") return "ok";
+  const supabase = await crearClienteServidor();
+  const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (error || !data) return "verificar";
+  if (data.currentLevel === "aal2") return "ok";
+  return data.nextLevel === "aal2" ? "verificar" : "activar";
+}
+
+/**
  * Para Server Actions del panel: exige perfil de administrador ACTIVO. Una
  * sesión de usuario, o una sesión sin perfil, lanza ErrorNoAutorizado.
  */
@@ -98,6 +125,7 @@ export async function exigirAdmin(): Promise<SesionAdmin> {
   if (!sesion || !esSesionAdmin(sesion) || !sesion.perfil.activo) {
     throw new ErrorNoAutorizado();
   }
+  if ((await estadoMfa()) !== "ok") throw new ErrorNoAutorizado("Falta verificar el segundo factor.");
   return sesion;
 }
 
@@ -117,6 +145,24 @@ export async function exigirUsuario(): Promise<SesionUsuario> {
  * navegar entre páginas hermanas.
  */
 export async function exigirAdminPagina(destino: string): Promise<SesionAdmin> {
+  const sesion = await sesionAdminPagina(destino);
+  const mfa = await estadoMfa();
+  if (mfa === "verificar") redirect(`${RUTA_VERIFICAR_MFA}?redirigir=${encodeURIComponent(destino)}`);
+  if (mfa === "activar") redirect(RUTA_ACTIVAR_MFA);
+  return sesion;
+}
+
+/**
+ * Para las dos páginas del propio segundo factor (verificar y activar), que no
+ * pueden exigir el segundo factor sin crear un bucle. Exige administrador
+ * activo y devuelve en qué punto del MFA está.
+ */
+export async function exigirAdminParaMfa(destino: string): Promise<{ sesion: SesionAdmin; mfa: EstadoMfa }> {
+  const sesion = await sesionAdminPagina(destino);
+  return { sesion, mfa: await estadoMfa() };
+}
+
+async function sesionAdminPagina(destino: string): Promise<SesionAdmin> {
   const sesion = await obtenerPerfil();
   if (!sesion) redirect(`${RUTA_LOGIN}?redirigir=${encodeURIComponent(destino)}`);
   if (!esSesionAdmin(sesion)) redirect(RUTA_ACCESO_USUARIO);

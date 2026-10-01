@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { RUTA_ACCESO_USUARIO } from "@/lib/auth/rutas";
 import { destinoSeguro, obtenerUsuario } from "@/lib/auth/sesion";
 import { enviarRestablecerContrasena } from "@/lib/auth/enlaces";
-import { bloqueoAcceso, registrarAcierto, registrarFallo, segundosDeBloqueo } from "@/lib/auth/limite";
+import { MAX_INTENTOS_POR_IP, bloqueoAcceso, registrarAcierto, registrarFallo, segundosDeBloqueo } from "@/lib/auth/limite";
 import { ipDelCliente } from "@/lib/auth/ip";
 import { crearClienteServidor } from "@/lib/supabase/server";
 import {
@@ -50,8 +50,10 @@ export async function iniciarSesionUsuario(entrada: EntradaAcceso): Promise<Resu
     return { ok: false, error: "Revisa los datos.", campos: camposDeZod(datos.error) };
   }
 
-  const clave = `cuenta|${await ipDelCliente()}|${datos.data.correo.toLowerCase()}`;
-  const bloqueado = bloqueoAcceso(clave);
+  const ip = await ipDelCliente();
+  const clave = `cuenta|${ip}|${datos.data.correo.toLowerCase()}`;
+  const claveIp = `ip|${ip}`;
+  const bloqueado = bloqueoAcceso(clave, claveIp);
   if (bloqueado) return bloqueado;
 
   const supabase = await crearClienteServidor();
@@ -62,7 +64,8 @@ export async function iniciarSesionUsuario(entrada: EntradaAcceso): Promise<Resu
 
   if (error) {
     registrarFallo(clave);
-    const ahoraBloqueado = bloqueoAcceso(clave);
+    registrarFallo(claveIp, MAX_INTENTOS_POR_IP);
+    const ahoraBloqueado = bloqueoAcceso(clave, claveIp);
     if (ahoraBloqueado) return ahoraBloqueado;
     return { ok: false, error: CREDENCIALES_INCORRECTAS };
   }

@@ -15,6 +15,8 @@ import "server-only";
  */
 
 const MAX_INTENTOS = 5;
+/** Fallos desde una misma IP, sea cual sea el correo: frena el "password spraying". */
+export const MAX_INTENTOS_POR_IP = 20;
 const VENTANA_MS = 15 * 60 * 1000;
 const BLOQUEO_MS = 5 * 60 * 1000;
 
@@ -35,15 +37,15 @@ export function segundosDeBloqueo(clave: string): number {
   return 0;
 }
 
-export function registrarFallo(clave: string) {
+export function registrarFallo(clave: string, max = MAX_INTENTOS) {
   const ahora = Date.now();
   const registro = registros.get(clave) ?? { intentos: [], hasta: 0 };
   // Bloqueo ya cumplido: se empieza de cero.
   if (registro.hasta <= ahora) registro.hasta = 0;
-  if (registro.hasta === 0 && registro.intentos.length >= MAX_INTENTOS) registro.intentos = [];
+  if (registro.hasta === 0 && registro.intentos.length >= max) registro.intentos = [];
   limpiar(registro, ahora);
   registro.intentos.push(ahora);
-  if (registro.intentos.length >= MAX_INTENTOS) registro.hasta = ahora + BLOQUEO_MS;
+  if (registro.intentos.length >= max) registro.hasta = ahora + BLOQUEO_MS;
   registros.set(clave, registro);
 
   // Poda ocasional para que el mapa no crezca sin límite.
@@ -60,8 +62,8 @@ export function registrarAcierto(clave: string) {
 }
 
 /** Respuesta de acceso bloqueado, o null si se puede intentar. `espera` alimenta el contador de la pantalla. */
-export function bloqueoAcceso(clave: string) {
-  const espera = segundosDeBloqueo(clave);
+export function bloqueoAcceso(...claves: string[]) {
+  const espera = Math.max(...claves.map(segundosDeBloqueo));
   return espera > 0
     ? ({ ok: false, error: "Demasiados intentos. Espera a que termine el contador.", espera } as const)
     : null;

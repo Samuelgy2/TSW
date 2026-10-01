@@ -5,6 +5,10 @@
 
 /** Página de acceso al panel (administradores). */
 export const RUTA_LOGIN = "/admin/login";
+/** Segundo factor del panel: pedir el código de la app de autenticación. */
+export const RUTA_VERIFICAR_MFA = "/admin/verificar";
+/** Segundo factor del panel: primera activación (QR). Obligatoria para todo administrador. */
+export const RUTA_ACTIVAR_MFA = "/admin/seguridad";
 /** A dónde se entra tras iniciar sesión de administrador si no había destino guardado. */
 export const RUTA_PANEL = "/admin";
 

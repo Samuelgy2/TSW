@@ -4,6 +4,26 @@ import type { NextConfig } from "next";
 
 const supabaseUrl = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:54321");
 
+// CSP en modo Report-Only: el navegador anota las violaciones en la consola y no
+// bloquea nada. Para pasar a bloqueo, cambiar la clave a Content-Security-Policy
+// cuando una vuelta por el sitio y el panel no deje violaciones.
+// 'unsafe-inline' en script y style: Next inyecta scripts en línea y exigiría
+// nonces, que obligan a render dinámico en todas las páginas. Lo que sí
+// cierra: orígenes ajenos, iframes, <base>, <object> y formularios hacia fuera.
+// ponytail: con nonces (middleware + render dinámico) se quitaría 'unsafe-inline'.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  `img-src 'self' data: blob: ${supabaseUrl.origin}`,
+  "font-src 'self'",
+  `connect-src 'self' ${supabaseUrl.origin}`,
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join("; ");
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Carpeta de salida, configurable para que los chequeos no peleen con el
@@ -31,8 +51,7 @@ const nextConfig: NextConfig = {
   // —el móvil, por ejemplo— en vez de localhost.
   allowedDevOrigins: ["192.168.13.1", "localhost", "127.0.0.1"],
   // Cabeceras de seguridad en todas las rutas. Sin iframes en el sitio, así que
-  // DENY no rompe nada. Falta la CSP: Next inyecta scripts en línea y pide
-  // nonces; se añade aparte, empezando en modo Report-Only.
+  // DENY no rompe nada. La CSP va en Report-Only (ver arriba).
   async headers() {
     return [
       {
@@ -43,6 +62,10 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
           { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+          // En desarrollo React usa eval y llenaría la consola de ruido.
+          ...(process.env.NODE_ENV === "production"
+            ? [{ key: "Content-Security-Policy-Report-Only", value: CSP }]
+            : []),
         ],
       },
     ];

@@ -29,6 +29,10 @@ Primera tanda: **bajas e informativas**. Las medias (1 a 4) quedan pendientes y 
 | # | Estado |
 |---|---|
 | 1 | Cabeceras puestas y comprobadas en local; **falta la CSP** y verlas en producción |
+| 1 (CSP) | Puesta en **Report-Only** (solo producción). Pasar a bloqueo tras revisar el panel con la consola abierta |
+| 2 | Corregido: además del conteo por `IP|correo`, 20 fallos desde una IP la bloquean 5 min |
+| 3 | Implementado el TOTP obligatorio (`/admin/verificar`, `/admin/seguridad`, guardia aal2 en `exigirAdmin*`). **Pendiente de prueba con tu cuenta**. Falta la acción para quitar el factor de otro administrador |
+| 4 | Pendiente: cookie de actividad con latido (sin plan Pro) |
 | 5 | Migración escrita (`20261001130000_storage_sin_listado_publico.sql`), **sin aplicar**: la aplicas tú con `db push` |
 | 6 | Sin acción: esperar parche de Next 15.x |
 | 7 | Corregido: `lib/auth/ip.ts` prefiere `x-vercel-forwarded-for` y las dos copias de la función quedaron en una |

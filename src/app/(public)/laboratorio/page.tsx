@@ -11,6 +11,7 @@ import {
   Boton,
   BotonWhatsApp,
   Campo,
+  CampoContrasena,
   Card,
   CardCuerpo,
   CardEnlace,
@@ -409,6 +410,7 @@ export default function PaginaLaboratorio() {
             defaultValue="300 123"
             error="Escribe un número de diez dígitos."
           />
+          <CampoContrasena etiqueta="Contraseña" name="contrasena" autoComplete="current-password" ayuda="El ojo muestra u oculta lo escrito." />
           <Select
             etiqueta="Talla"
             name="talla"

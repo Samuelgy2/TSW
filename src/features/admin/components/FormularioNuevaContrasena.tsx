@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { Aviso, Boton, Campo } from "@/components/ui";
+import { Aviso, Boton, CampoContrasena } from "@/components/ui";
 import { restablecerContrasena, type ResultadoAccion } from "../acciones";
 import { esquemaNuevaContrasena, type EntradaNuevaContrasena } from "../schemas";
 
@@ -58,18 +58,16 @@ export function FormularioNuevaContrasena({
     <form onSubmit={enviar} noValidate className="flex flex-col gap-5">
       {errorGeneral && <Aviso tono="error">{errorGeneral}</Aviso>}
 
-      <Campo
+      <CampoContrasena
         etiqueta="Nueva contraseña"
-        type="password"
         autoComplete="new-password"
         required
         ayuda="Al menos 12 caracteres."
         error={errors.contrasena?.message}
         {...register("contrasena")}
       />
-      <Campo
+      <CampoContrasena
         etiqueta="Repite la contraseña"
-        type="password"
         autoComplete="new-password"
         required
         error={errors.confirmacion?.message}

@@ -5,7 +5,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { Aviso, Boton, Campo } from "@/components/ui";
+import { Aviso, Boton, Campo, CampoContrasena } from "@/components/ui";
 import { iniciarSesion, type ResultadoAccion } from "../acciones";
 import { esquemaAcceso, type EntradaAcceso } from "../schemas";
 
@@ -42,7 +42,6 @@ export function FormularioAcceso({
 }: FormularioAccesoProps) {
   const [enviando, iniciarEnvio] = useTransition();
   const [errorGeneral, setErrorGeneral] = useState<string | null>(null);
-  const [verContrasena, setVerContrasena] = useState(false);
   // Segundos de bloqueo que dicta el servidor; el contador solo los muestra.
   const [espera, setEspera] = useState(0);
 
@@ -103,23 +102,13 @@ export function FormularioAcceso({
           error={errors.correo?.message}
           {...register("correo")}
         />
-        <Campo
+        <CampoContrasena
           etiqueta="Contraseña"
-          type={verContrasena ? "text" : "password"}
           autoComplete="current-password"
           required
           error={errors.contrasena?.message}
           {...register("contrasena")}
         />
-        <label className="-mt-2 flex min-h-[44px] items-center gap-3 text-sm">
-          <input
-            type="checkbox"
-            checked={verContrasena}
-            onChange={(e) => setVerContrasena(e.target.checked)}
-            className="h-5 w-5 accent-acento-oscuro"
-          />
-          Mostrar contraseña
-        </label>
 
         <Boton type="submit" cargando={enviando} disabled={espera > 0} completo>
           Entrar

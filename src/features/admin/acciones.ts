@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import { RUTA_LOGIN, destinoSeguro, obtenerUsuario } from "@/lib/auth";
 import { enviarCodigoAcceso, enviarRestablecerContrasena } from "@/lib/auth/enlaces";
-import { bloqueoAcceso, registrarAcierto, registrarFallo, segundosDeBloqueo } from "@/lib/auth/limite";
+import { MAX_INTENTOS_POR_IP, bloqueoAcceso, registrarAcierto, registrarFallo, segundosDeBloqueo } from "@/lib/auth/limite";
 import { ipDelCliente } from "@/lib/auth/ip";
 import { crearClienteServidor } from "@/lib/supabase/server";
 import {
@@ -48,8 +48,10 @@ export async function iniciarSesion(entrada: EntradaAcceso): Promise<ResultadoAc
     return { ok: false, error: "Revisa los datos.", campos: camposDeZod(datos.error) };
   }
 
-  const clave = `${await ipDelCliente()}|${datos.data.correo.toLowerCase()}`;
-  const bloqueado = bloqueoAcceso(clave);
+  const ip = await ipDelCliente();
+  const clave = `${ip}|${datos.data.correo.toLowerCase()}`;
+  const claveIp = `ip|${ip}`;
+  const bloqueado = bloqueoAcceso(clave, claveIp);
   if (bloqueado) return bloqueado;
 
   const supabase = await crearClienteServidor();
@@ -60,7 +62,8 @@ export async function iniciarSesion(entrada: EntradaAcceso): Promise<ResultadoAc
 
   if (error) {
     registrarFallo(clave);
-    const ahoraBloqueado = bloqueoAcceso(clave);
+    registrarFallo(claveIp, MAX_INTENTOS_POR_IP);
+    const ahoraBloqueado = bloqueoAcceso(clave, claveIp);
     if (ahoraBloqueado) return ahoraBloqueado;
     // Cualquier fallo de Auth se reporta igual. Distinguir "no existe" de
     // "contraseña errada" permitiría enumerar correos.
