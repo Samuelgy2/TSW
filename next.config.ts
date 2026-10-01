@@ -30,6 +30,23 @@ const nextConfig: NextConfig = {
   // falta cuando el sitio se abre desde otro dispositivo de la red local
   // —el móvil, por ejemplo— en vez de localhost.
   allowedDevOrigins: ["192.168.13.1", "localhost", "127.0.0.1"],
+  // Cabeceras de seguridad en todas las rutas. Sin iframes en el sitio, así que
+  // DENY no rompe nada. Falta la CSP: Next inyecta scripts en línea y pide
+  // nonces; se añade aparte, empezando en modo Report-Only.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
+          { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+        ],
+      },
+    ];
+  },
   images: {
     // Storage de Supabase: imágenes de productos y competencias. El host sale
     // de la URL configurada, así sirve igual con el proyecto enlazado que con

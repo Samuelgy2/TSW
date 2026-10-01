@@ -63,7 +63,7 @@ export function FormularioNuevaContrasena({
         type="password"
         autoComplete="new-password"
         required
-        ayuda="Al menos 10 caracteres."
+        ayuda="Al menos 12 caracteres."
         error={errors.contrasena?.message}
         {...register("contrasena")}
       />

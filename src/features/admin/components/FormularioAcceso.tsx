@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -23,6 +23,9 @@ export type FormularioAccesoProps = {
   accion?: (entrada: EntradaAcceso) => Promise<ResultadoAccion>;
 };
 
+/** 4:05 */
+const reloj = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
 /**
  * Acceso con correo y contraseña. Un solo formulario para las dos puertas:
  * `/admin/login` (administradores) y `/cuenta/acceso` (usuarios), que cambian
@@ -39,6 +42,15 @@ export function FormularioAcceso({
 }: FormularioAccesoProps) {
   const [enviando, iniciarEnvio] = useTransition();
   const [errorGeneral, setErrorGeneral] = useState<string | null>(null);
+  const [verContrasena, setVerContrasena] = useState(false);
+  // Segundos de bloqueo que dicta el servidor; el contador solo los muestra.
+  const [espera, setEspera] = useState(0);
+
+  useEffect(() => {
+    if (espera <= 0) return;
+    const id = setTimeout(() => setEspera((e) => e - 1), 1000);
+    return () => clearTimeout(id);
+  }, [espera]);
 
   const {
     register,
@@ -57,6 +69,7 @@ export function FormularioAcceso({
       // Con éxito la acción redirige y nunca llega aquí.
       if (!resultado.ok) {
         setErrorGeneral(resultado.error);
+        setEspera(resultado.espera ?? 0);
         for (const [campo, mensaje] of Object.entries(resultado.campos ?? {})) {
           if (campo === "correo" || campo === "contrasena") setError(campo, { message: mensaje });
         }
@@ -70,7 +83,14 @@ export function FormularioAcceso({
       {textoAyuda && <p className="mt-2 mb-6 text-sm text-texto-sec">{textoAyuda}</p>}
 
       <form onSubmit={enviar} noValidate className="flex flex-col gap-5">
-        {errorGeneral && <Aviso tono="error">{errorGeneral}</Aviso>}
+        {espera > 0 ? (
+          <Aviso tono="error" titulo="Acceso bloqueado">
+            Demasiados intentos. Vuelve a intentar en{" "}
+            <strong role="timer" aria-live="off">{reloj(espera)}</strong>.
+          </Aviso>
+        ) : (
+          errorGeneral && <Aviso tono="error">{errorGeneral}</Aviso>
+        )}
 
         <input type="hidden" {...register("redirigir")} />
 
@@ -85,14 +105,23 @@ export function FormularioAcceso({
         />
         <Campo
           etiqueta="Contraseña"
-          type="password"
+          type={verContrasena ? "text" : "password"}
           autoComplete="current-password"
           required
           error={errors.contrasena?.message}
           {...register("contrasena")}
         />
+        <label className="-mt-2 flex min-h-[44px] items-center gap-3 text-sm">
+          <input
+            type="checkbox"
+            checked={verContrasena}
+            onChange={(e) => setVerContrasena(e.target.checked)}
+            className="h-5 w-5 accent-acento-oscuro"
+          />
+          Mostrar contraseña
+        </label>
 
-        <Boton type="submit" cargando={enviando} completo>
+        <Boton type="submit" cargando={enviando} disabled={espera > 0} completo>
           Entrar
         </Boton>
 

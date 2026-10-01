@@ -1,11 +1,11 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { RUTA_LOGIN, destinoSeguro, obtenerUsuario } from "@/lib/auth";
 import { enviarCodigoAcceso, enviarRestablecerContrasena } from "@/lib/auth/enlaces";
-import { registrarAcierto, registrarFallo, segundosDeBloqueo } from "@/lib/auth/limite";
+import { bloqueoAcceso, registrarAcierto, registrarFallo, segundosDeBloqueo } from "@/lib/auth/limite";
+import { ipDelCliente } from "@/lib/auth/ip";
 import { crearClienteServidor } from "@/lib/supabase/server";
 import {
   esquemaAcceso,
@@ -23,7 +23,7 @@ import {
 /** Resultado de una acción del panel cuando no redirige. */
 export type ResultadoAccion =
   | { ok: true; mensaje?: string }
-  | { ok: false; error: string; campos?: Record<string, string> };
+  | { ok: false; error: string; campos?: Record<string, string>; /** Segundos de bloqueo restantes (acceso). */ espera?: number };
 
 /** Mismo mensaje para usuario inexistente y contraseña errada: no se enumeran usuarios. */
 const CREDENCIALES_INCORRECTAS = "Credenciales incorrectas.";
@@ -35,15 +35,6 @@ function camposDeZod(error: { issues: { path: PropertyKey[]; message: string }[]
     campos[clave] ??= problema.message;
   }
   return campos;
-}
-
-async function ipDelCliente(): Promise<string> {
-  const cabeceras = await headers();
-  return (
-    cabeceras.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    cabeceras.get("x-real-ip") ||
-    "desconocida"
-  );
 }
 
 /**
@@ -58,14 +49,8 @@ export async function iniciarSesion(entrada: EntradaAcceso): Promise<ResultadoAc
   }
 
   const clave = `${await ipDelCliente()}|${datos.data.correo.toLowerCase()}`;
-  const bloqueo = segundosDeBloqueo(clave);
-  if (bloqueo > 0) {
-    const minutos = Math.ceil(bloqueo / 60);
-    return {
-      ok: false,
-      error: `Demasiados intentos. Espera ${minutos} ${minutos === 1 ? "minuto" : "minutos"} antes de volver a intentar.`,
-    };
-  }
+  const bloqueado = bloqueoAcceso(clave);
+  if (bloqueado) return bloqueado;
 
   const supabase = await crearClienteServidor();
   const { error } = await supabase.auth.signInWithPassword({
@@ -75,6 +60,8 @@ export async function iniciarSesion(entrada: EntradaAcceso): Promise<ResultadoAc
 
   if (error) {
     registrarFallo(clave);
+    const ahoraBloqueado = bloqueoAcceso(clave);
+    if (ahoraBloqueado) return ahoraBloqueado;
     // Cualquier fallo de Auth se reporta igual. Distinguir "no existe" de
     // "contraseña errada" permitiría enumerar correos.
     return { ok: false, error: CREDENCIALES_INCORRECTAS };

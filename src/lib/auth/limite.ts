@@ -3,9 +3,9 @@ import "server-only";
 /**
  * Límite de intentos de acceso, en memoria del proceso.
  *
- * Ventana deslizante por clave (IP + correo): a partir del quinto intento
- * fallido en 15 minutos se rechaza sin consultar a Auth. Los aciertos limpian
- * la clave.
+ * Por clave (IP + correo): el quinto fallo en 15 minutos bloquea 5 minutos
+ * contados desde ese fallo, y se rechaza sin consultar a Auth. Pasado el
+ * bloqueo la cuenta de fallos empieza de cero. Los aciertos limpian la clave.
  *
  * Alcance: cada instancia del servidor lleva su propio conteo, así que en
  * Vercel un atacante que reparta intentos entre instancias supera este tope.
@@ -16,8 +16,9 @@ import "server-only";
 
 const MAX_INTENTOS = 5;
 const VENTANA_MS = 15 * 60 * 1000;
+const BLOQUEO_MS = 5 * 60 * 1000;
 
-type Registro = { intentos: number[]; };
+type Registro = { intentos: number[]; hasta: number };
 
 const registros = new Map<string, Registro>();
 
@@ -30,28 +31,38 @@ export function segundosDeBloqueo(clave: string): number {
   const registro = registros.get(clave);
   if (!registro) return 0;
   const ahora = Date.now();
-  limpiar(registro, ahora);
-  if (registro.intentos.length < MAX_INTENTOS) return 0;
-  const masAntiguo = registro.intentos[0] ?? ahora;
-  return Math.max(1, Math.ceil((VENTANA_MS - (ahora - masAntiguo)) / 1000));
+  if (registro.hasta > ahora) return Math.ceil((registro.hasta - ahora) / 1000);
+  return 0;
 }
 
 export function registrarFallo(clave: string) {
   const ahora = Date.now();
-  const registro = registros.get(clave) ?? { intentos: [] };
+  const registro = registros.get(clave) ?? { intentos: [], hasta: 0 };
+  // Bloqueo ya cumplido: se empieza de cero.
+  if (registro.hasta <= ahora) registro.hasta = 0;
+  if (registro.hasta === 0 && registro.intentos.length >= MAX_INTENTOS) registro.intentos = [];
   limpiar(registro, ahora);
   registro.intentos.push(ahora);
+  if (registro.intentos.length >= MAX_INTENTOS) registro.hasta = ahora + BLOQUEO_MS;
   registros.set(clave, registro);
 
   // Poda ocasional para que el mapa no crezca sin límite.
   if (registros.size > 1000) {
     for (const [k, r] of registros) {
       limpiar(r, ahora);
-      if (r.intentos.length === 0) registros.delete(k);
+      if (r.intentos.length === 0 && r.hasta <= ahora) registros.delete(k);
     }
   }
 }
 
 export function registrarAcierto(clave: string) {
   registros.delete(clave);
+}
+
+/** Respuesta de acceso bloqueado, o null si se puede intentar. `espera` alimenta el contador de la pantalla. */
+export function bloqueoAcceso(clave: string) {
+  const espera = segundosDeBloqueo(clave);
+  return espera > 0
+    ? ({ ok: false, error: "Demasiados intentos. Espera a que termine el contador.", espera } as const)
+    : null;
 }

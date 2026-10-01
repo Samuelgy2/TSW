@@ -1,12 +1,12 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { RUTA_ACCESO_USUARIO } from "@/lib/auth/rutas";
 import { destinoSeguro, obtenerUsuario } from "@/lib/auth/sesion";
 import { enviarRestablecerContrasena } from "@/lib/auth/enlaces";
-import { registrarAcierto, registrarFallo, segundosDeBloqueo } from "@/lib/auth/limite";
+import { bloqueoAcceso, registrarAcierto, registrarFallo, segundosDeBloqueo } from "@/lib/auth/limite";
+import { ipDelCliente } from "@/lib/auth/ip";
 import { crearClienteServidor } from "@/lib/supabase/server";
 import {
   esquemaAcceso,
@@ -43,15 +43,6 @@ function camposDeZod(error: { issues: { path: PropertyKey[]; message: string }[]
   return campos;
 }
 
-async function ipDelCliente(): Promise<string> {
-  const cabeceras = await headers();
-  return (
-    cabeceras.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    cabeceras.get("x-real-ip") ||
-    "desconocida"
-  );
-}
-
 /** Inicio de sesión del área de cuenta. Exige perfil_usuario ACTIVO. */
 export async function iniciarSesionUsuario(entrada: EntradaAcceso): Promise<ResultadoAccion> {
   const datos = esquemaAcceso.safeParse(entrada);
@@ -60,14 +51,8 @@ export async function iniciarSesionUsuario(entrada: EntradaAcceso): Promise<Resu
   }
 
   const clave = `cuenta|${await ipDelCliente()}|${datos.data.correo.toLowerCase()}`;
-  const bloqueo = segundosDeBloqueo(clave);
-  if (bloqueo > 0) {
-    const minutos = Math.ceil(bloqueo / 60);
-    return {
-      ok: false,
-      error: `Demasiados intentos. Espera ${minutos} ${minutos === 1 ? "minuto" : "minutos"} antes de volver a intentar.`,
-    };
-  }
+  const bloqueado = bloqueoAcceso(clave);
+  if (bloqueado) return bloqueado;
 
   const supabase = await crearClienteServidor();
   const { error } = await supabase.auth.signInWithPassword({
@@ -77,6 +62,8 @@ export async function iniciarSesionUsuario(entrada: EntradaAcceso): Promise<Resu
 
   if (error) {
     registrarFallo(clave);
+    const ahoraBloqueado = bloqueoAcceso(clave);
+    if (ahoraBloqueado) return ahoraBloqueado;
     return { ok: false, error: CREDENCIALES_INCORRECTAS };
   }
 
