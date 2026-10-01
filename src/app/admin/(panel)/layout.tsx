@@ -27,7 +27,7 @@ export default async function LayoutPanel({ children }: { children: ReactNode })
 
   return (
     <ArmazonPanel correo={usuario.email ?? "administrador"} deporte={deporte} deportes={deportes}>
-      <ExpulsorInactividad alExpirar={cerrarSesion} />
+      <ExpulsorInactividad alExpirar={cerrarSesion} latido="/admin/latido" />
       {children}
     </ArmazonPanel>
   );

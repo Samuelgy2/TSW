@@ -16,11 +16,11 @@ export const metadata: Metadata = { title: "Acceso" };
 export default async function PaginaAcceso({
   searchParams,
 }: {
-  searchParams: Promise<{ redirigir?: string }>;
+  searchParams: Promise<{ redirigir?: string; sesion?: string }>;
 }) {
-  const { redirigir } = await searchParams;
+  const { redirigir, sesion: estadoSesion } = await searchParams;
   const sesion = await obtenerPerfil();
   if (sesion) redirect(sesion.tipo === "usuario" ? RUTA_CUENTA : RUTA_PANEL);
 
-  return <AccesoAdmin redirigir={redirigir} />;
+  return <AccesoAdmin redirigir={redirigir} expirada={estadoSesion === "expirada"} />;
 }

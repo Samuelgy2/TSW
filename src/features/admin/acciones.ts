@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { RUTA_LOGIN, destinoSeguro, obtenerUsuario } from "@/lib/auth";
 import { enviarCodigoAcceso, enviarRestablecerContrasena } from "@/lib/auth/enlaces";
 import { MAX_INTENTOS_POR_IP, bloqueoAcceso, registrarAcierto, registrarFallo, segundosDeBloqueo } from "@/lib/auth/limite";
+import { iniciarActividad } from "@/lib/auth/actividad-servidor";
 import { ipDelCliente } from "@/lib/auth/ip";
 import { crearClienteServidor } from "@/lib/supabase/server";
 import {
@@ -55,7 +56,7 @@ export async function iniciarSesion(entrada: EntradaAcceso): Promise<ResultadoAc
   if (bloqueado) return bloqueado;
 
   const supabase = await crearClienteServidor();
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data: sesionAuth, error } = await supabase.auth.signInWithPassword({
     email: datos.data.correo,
     password: datos.data.contrasena,
   });
@@ -82,6 +83,7 @@ export async function iniciarSesion(entrada: EntradaAcceso): Promise<ResultadoAc
   }
 
   registrarAcierto(clave);
+  await iniciarActividad(sesionAuth.user.id);
   redirect(destinoSeguro(datos.data.redirigir));
 }
 
@@ -199,7 +201,7 @@ export async function verificarCodigoAcceso(
   // `type: "email"` y no `"magiclink"`: es el que acepta el email_otp que
   // devuelve generateLink. Comprobado contra @supabase/supabase-js 2.116.0
   // y el proyecto real, no supuesto.
-  const { error } = await supabase.auth.verifyOtp({
+  const { data: verificado, error } = await supabase.auth.verifyOtp({
     email: correo,
     token: datos.data.codigo,
     type: "email",
@@ -218,6 +220,7 @@ export async function verificarCodigoAcceso(
   }
 
   registrarAcierto(clave);
+  if (verificado.user) await iniciarActividad(verificado.user.id);
   redirect(destinoSeguro(datos.data.redirigir));
 }
 

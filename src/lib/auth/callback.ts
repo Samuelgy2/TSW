@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 
 import { crearClienteServidor } from "@/lib/supabase/server";
+import { iniciarActividad } from "./actividad-servidor";
 
 /**
  * Canje del enlace que llega por correo (recuperación de contraseña o
@@ -44,14 +45,20 @@ export async function canjearEnlaceDeCorreo(
   const tokenHash = searchParams.get("token_hash");
   const tipo = searchParams.get("type") as EmailOtpType | null;
   if (tokenHash && tipo && TIPOS_ADMITIDOS.has(tipo)) {
-    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: tipo });
-    if (!error) return NextResponse.redirect(`${origin}${destino}`);
+    const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: tipo });
+    if (!error) {
+      if (opciones.prefijo === "/admin" && data.user) await iniciarActividad(data.user.id);
+      return NextResponse.redirect(`${origin}${destino}`);
+    }
   }
 
   const codigo = searchParams.get("code");
   if (codigo) {
-    const { error } = await supabase.auth.exchangeCodeForSession(codigo);
-    if (!error) return NextResponse.redirect(`${origin}${destino}`);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(codigo);
+    if (!error) {
+      if (opciones.prefijo === "/admin" && data.user) await iniciarActividad(data.user.id);
+      return NextResponse.redirect(`${origin}${destino}`);
+    }
   }
 
   return NextResponse.redirect(`${origin}${opciones.rutaError}`);
