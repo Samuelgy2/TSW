@@ -4,7 +4,6 @@ import { BarraSuperior } from "@/components/layout/BarraSuperior";
 import { BotonFlotanteWhatsApp } from "@/components/layout/BotonFlotanteWhatsApp";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
-import { TransicionPagina } from "@/components/layout/TransicionPagina";
 import { listarClubesParaMenu } from "@/features/clubes/queries";
 
 export default async function LayoutPublico({ children }: { children: ReactNode }) {
@@ -23,7 +22,7 @@ export default async function LayoutPublico({ children }: { children: ReactNode 
       <Header clubes={clubes} />
 
       <main id="contenido" tabIndex={-1}>
-        <TransicionPagina>{children}</TransicionPagina>
+        {children}
       </main>
 
       <Footer />
