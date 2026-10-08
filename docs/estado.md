@@ -205,9 +205,11 @@ Fuente: [contenido-tsw-por-pagina.md](contenido-tsw-por-pagina.md); inventario e
 - `supabase/pendientes/*.pendiente` son migraciones escritas que NO deben
   aplicarse todavía (un `db push` no las ve). Vuelven a `supabase/migrations/`
   con timestamp nuevo cuando se verifique lo que las precede.
-- **Limpieza pendiente** (migración aparte, después), claves que quedan inertes
-  en filas de `contenido_sitio`:
-  - `matriculas.cupos` y `matriculas.cierre`, cuando el bloque superior de
-    Matrículas pase a ser un array editable.
-  - `portada.cifraPendiente`: el esquema y el sitio ya no la leen (una cifra sin
-    valor se oculta); en producción la fila aún la guarda, con el valor "Error".
+- **Limpieza de claves en `contenido_sitio`:**
+  - `portada.cifraPendiente`: escrita, sin aplicar —
+    `20261008120000_portada_quitar_cifra_pendiente.sql`. Ningún código la lee
+    (grep 2026-10-08). En producción la fila aún la guarda, con el valor "Error".
+  - `matriculas.cupos` y `matriculas.cierre`: **siguen en uso** (`/matriculas`,
+    `features/sitio/schemas.ts`, `SitioAdmin.tsx`, `config/contenido.ts`), así
+    que no se limpian. Solo cuando el bloque superior de Matrículas pase a ser
+    un array editable.
