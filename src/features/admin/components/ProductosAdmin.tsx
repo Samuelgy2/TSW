@@ -26,6 +26,7 @@ import type { Club } from "@/features/clubes/types";
 import {
   alternarProducto,
   alternarVariante,
+  eliminarProducto,
   guardarProducto,
   guardarVariante,
   confirmarImagenProducto,
@@ -69,9 +70,8 @@ function etiquetaCategoria(categoria: string | null): string {
  *  · Stock y stock reservado se muestran por separado: son cosas distintas y
  *    confundirlas lleva a sobreventa. El reservado no se edita jamás: lo
  *    mueven los pedidos.
- *  · No hay eliminar: un producto con pedidos no se puede borrar (FK
- *    RESTRICT). Se desactiva, y si la base rechazara algo, el mensaje que
- *    llega ya está traducido a lenguaje del cliente.
+ *  · Eliminar solo funciona sin pedidos (FK RESTRICT; lo decide la RPC y su
+ *    mensaje llega traducido). Con pedidos, se desactiva.
  */
 export function ProductosAdmin({
   productos,
@@ -84,6 +84,7 @@ export function ProductosAdmin({
   const [aviso, setAviso] = useState<ResultadoAccion | null>(null);
   const [editando, setEditando] = useState<ProductoConVariantesCompletas | "nuevo" | null>(null);
   const [confirmarDesactivar, setConfirmarDesactivar] = useState<ProductoConVariantesCompletas | null>(null);
+  const [confirmarEliminar, setConfirmarEliminar] = useState<ProductoConVariantesCompletas | null>(null);
 
   function ejecutar(accion: () => Promise<ResultadoAccion>) {
     setAviso(null);
@@ -152,6 +153,9 @@ export function ProductosAdmin({
                 >
                   {p.activo ? "Desactivar" : "Activar"}
                 </Boton>
+                <Boton tamano="sm" variante="fantasma" onClick={() => setConfirmarEliminar(p)}>
+                  Eliminar
+                </Boton>
               </div>
             ),
           },
@@ -199,8 +203,35 @@ export function ProductosAdmin({
       >
         <p className="text-texto-sec">
           Deja de verse en la tienda de inmediato, pero conserva su historial de pedidos y se puede
-          reactivar cuando quieras. <strong className="text-azul-profundo">No se puede eliminar:</strong>{" "}
-          los pedidos pasados lo referencian.
+          reactivar cuando quieras. <strong className="text-azul-profundo">Si ya tiene pedidos no se puede eliminar</strong>:
+          desactívalo.
+        </p>
+      </Modal>
+
+      <Modal
+        abierto={confirmarEliminar !== null}
+        alCerrar={() => setConfirmarEliminar(null)}
+        titulo="¿Eliminar este producto?"
+        pie={
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <Boton variante="fantasma" onClick={() => setConfirmarEliminar(null)}>
+              Cancelar
+            </Boton>
+            <Boton
+              onClick={() => {
+                const p = confirmarEliminar;
+                setConfirmarEliminar(null);
+                if (p) ejecutar(() => eliminarProducto(p.id));
+              }}
+            >
+              Eliminar
+            </Boton>
+          </div>
+        }
+      >
+        <p className="text-texto-sec">
+          Se borran el producto, sus variantes y su foto. <strong className="text-azul-profundo">No se puede deshacer.</strong>{" "}
+          Si ya tiene pedidos, la eliminación se rechaza y puedes desactivarlo.
         </p>
       </Modal>
     </div>

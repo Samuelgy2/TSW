@@ -37,6 +37,9 @@ yarn-error.log*
 /scripts/tmp/*
 !/scripts/tmp/.gitkeep
 
+# salida de build de chequeos
+/.next-check/
+
 # vercel
 .vercel
 tsconfig.tsbuildinfo

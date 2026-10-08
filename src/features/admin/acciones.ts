@@ -1,11 +1,12 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { RUTA_LOGIN, destinoSeguro, obtenerUsuario } from "@/lib/auth";
 import { enviarCodigoAcceso, enviarRestablecerContrasena } from "@/lib/auth/enlaces";
-import { registrarAcierto, registrarFallo, segundosDeBloqueo } from "@/lib/auth/limite";
+import { MAX_INTENTOS_POR_IP, bloqueoAcceso, registrarAcierto, registrarFallo, segundosDeBloqueo } from "@/lib/auth/limite";
+import { iniciarActividad } from "@/lib/auth/actividad-servidor";
+import { ipDelCliente } from "@/lib/auth/ip";
 import { crearClienteServidor } from "@/lib/supabase/server";
 import {
   esquemaAcceso,
@@ -23,7 +24,7 @@ import {
 /** Resultado de una acción del panel cuando no redirige. */
 export type ResultadoAccion =
   | { ok: true; mensaje?: string }
-  | { ok: false; error: string; campos?: Record<string, string> };
+  | { ok: false; error: string; campos?: Record<string, string>; /** Segundos de bloqueo restantes (acceso). */ espera?: number };
 
 /** Mismo mensaje para usuario inexistente y contraseña errada: no se enumeran usuarios. */
 const CREDENCIALES_INCORRECTAS = "Credenciales incorrectas.";
@@ -37,15 +38,6 @@ function camposDeZod(error: { issues: { path: PropertyKey[]; message: string }[]
   return campos;
 }
 
-async function ipDelCliente(): Promise<string> {
-  const cabeceras = await headers();
-  return (
-    cabeceras.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    cabeceras.get("x-real-ip") ||
-    "desconocida"
-  );
-}
-
 /**
  * Inicio de sesión. Valida en el servidor (la validación del cliente es solo
  * comodidad), aplica el límite de intentos y, si entra, redirige al destino
@@ -57,24 +49,23 @@ export async function iniciarSesion(entrada: EntradaAcceso): Promise<ResultadoAc
     return { ok: false, error: "Revisa los datos.", campos: camposDeZod(datos.error) };
   }
 
-  const clave = `${await ipDelCliente()}|${datos.data.correo.toLowerCase()}`;
-  const bloqueo = segundosDeBloqueo(clave);
-  if (bloqueo > 0) {
-    const minutos = Math.ceil(bloqueo / 60);
-    return {
-      ok: false,
-      error: `Demasiados intentos. Espera ${minutos} ${minutos === 1 ? "minuto" : "minutos"} antes de volver a intentar.`,
-    };
-  }
+  const ip = await ipDelCliente();
+  const clave = `${ip}|${datos.data.correo.toLowerCase()}`;
+  const claveIp = `ip|${ip}`;
+  const bloqueado = bloqueoAcceso(clave, claveIp);
+  if (bloqueado) return bloqueado;
 
   const supabase = await crearClienteServidor();
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data: sesionAuth, error } = await supabase.auth.signInWithPassword({
     email: datos.data.correo,
     password: datos.data.contrasena,
   });
 
   if (error) {
     registrarFallo(clave);
+    registrarFallo(claveIp, MAX_INTENTOS_POR_IP);
+    const ahoraBloqueado = bloqueoAcceso(clave, claveIp);
+    if (ahoraBloqueado) return ahoraBloqueado;
     // Cualquier fallo de Auth se reporta igual. Distinguir "no existe" de
     // "contraseña errada" permitiría enumerar correos.
     return { ok: false, error: CREDENCIALES_INCORRECTAS };
@@ -92,6 +83,7 @@ export async function iniciarSesion(entrada: EntradaAcceso): Promise<ResultadoAc
   }
 
   registrarAcierto(clave);
+  await iniciarActividad(sesionAuth.user.id);
   redirect(destinoSeguro(datos.data.redirigir));
 }
 
@@ -209,7 +201,7 @@ export async function verificarCodigoAcceso(
   // `type: "email"` y no `"magiclink"`: es el que acepta el email_otp que
   // devuelve generateLink. Comprobado contra @supabase/supabase-js 2.116.0
   // y el proyecto real, no supuesto.
-  const { error } = await supabase.auth.verifyOtp({
+  const { data: verificado, error } = await supabase.auth.verifyOtp({
     email: correo,
     token: datos.data.codigo,
     type: "email",
@@ -228,6 +220,7 @@ export async function verificarCodigoAcceso(
   }
 
   registrarAcierto(clave);
+  if (verificado.user) await iniciarActividad(verificado.user.id);
   redirect(destinoSeguro(datos.data.redirigir));
 }
 

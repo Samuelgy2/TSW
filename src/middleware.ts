@@ -2,6 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 import {
+  COOKIE_ACTIVIDAD,
+  OPCIONES_COOKIE_ACTIVIDAD,
+  actividadVigente,
+  firmarActividad,
+} from "@/lib/auth/actividad";
+import {
   RUTA_ACCESO_USUARIO,
   RUTA_LOGIN,
   cuentasHabilitadas,
@@ -90,6 +96,27 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(destino);
     }
     return respuesta;
+  }
+
+  // Panel: la sesión solo vale si hubo actividad en los últimos 5 minutos (cookie
+  // firmada, ver lib/auth/actividad.ts). Caducada, se cierra aquí mismo y se
+  // vuelve al acceso; vigente, se renueva con cada petición. Las páginas
+  // públicas del panel (acceso, recuperación, enlaces) quedan fuera.
+  if (esRutaAdmin && !esRutaAdminPublica(ruta)) {
+    if (await actividadVigente(request.cookies.get(COOKIE_ACTIVIDAD)?.value, user.id)) {
+      respuesta.cookies.set(COOKIE_ACTIVIDAD, await firmarActividad(user.id), OPCIONES_COOKIE_ACTIVIDAD);
+    } else {
+      await supabase.auth.signOut({ scope: "local" });
+      const destino = request.nextUrl.clone();
+      destino.pathname = RUTA_LOGIN;
+      destino.search = "";
+      destino.searchParams.set("sesion", "expirada");
+      const redireccion = NextResponse.redirect(destino);
+      // signOut escribió las cookies de Auth en `respuesta`: se pasan a la redirección.
+      for (const c of respuesta.cookies.getAll()) redireccion.cookies.set(c);
+      redireccion.cookies.set(COOKIE_ACTIVIDAD, "", { ...OPCIONES_COOKIE_ACTIVIDAD, maxAge: 0 });
+      return redireccion;
+    }
   }
 
   // Con sesión, la puerta correcta la decide cada página, no el middleware:

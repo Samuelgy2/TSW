@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { Aviso, Boton } from "@/components/ui";
+import { ExpulsorInactividad } from "@/components/auth/ExpulsorInactividad";
 import { Footer } from "@/components/layout/Footer";
 import { cerrarSesionUsuario } from "@/features/cuenta/acciones";
 import { cuentasHabilitadas } from "@/lib/auth/rutas";
@@ -28,6 +29,7 @@ export default function LayoutCuenta({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-svh flex-col bg-gris-frio">
+      <ExpulsorInactividad alExpirar={cerrarSesionUsuario} />
       <header className="border-b border-blanco/10 bg-azul-profundo text-blanco">
         <div className="contenedor flex h-16 items-center justify-between">
           <Link

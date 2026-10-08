@@ -168,7 +168,7 @@ export const esquemaNuevaContrasena = z
   .object({
     contrasena: z
       .string()
-      .min(10, "Usa al menos 10 caracteres.")
+      .min(12, "Usa al menos 12 caracteres.")
       .max(72, "Máximo 72 caracteres."),
     confirmacion: z.string(),
   })

@@ -1,5 +1,6 @@
 export { Boton, type BotonProps, type VarianteBoton, type TamanoBoton, type FondoBoton } from "./Boton";
 export { Campo, AreaTexto, type CampoProps, type AreaTextoProps } from "./Campo";
+export { CampoContrasena } from "./CampoContrasena";
 export { CampoMoneda, type CampoMonedaProps } from "./CampoMoneda";
 export { PieModal, type PieModalProps } from "./PieModal";
 export { Select, type SelectProps, type OpcionSelect } from "./Select";

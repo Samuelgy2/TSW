@@ -27,8 +27,10 @@ const esquema = z.object({
   CORREO_SMTP_PUERTO: z.coerce.number().int().positive(),
   CORREO_SMTP_USUARIO: z.string().min(1),
   CORREO_SMTP_CLAVE: z.string().min(1),
-  /** Remitente, p. ej. `TSW <tswbmxclub@gmail.com>`. */
+  /** Remitente, p. ej. `TSW <notificaciones@corporaciontws.com>`. */
   CORREO_REMITENTE: z.string().min(3),
+  /** A dónde llegan las respuestas. Opcional: sin ella, responden al remitente. */
+  CORREO_REPLY_TO: z.string().min(3).optional(),
 });
 
 type Configuracion = z.infer<typeof esquema>;
@@ -45,6 +47,7 @@ function leerConfiguracion(): Configuracion {
     CORREO_SMTP_USUARIO: process.env.CORREO_SMTP_USUARIO,
     CORREO_SMTP_CLAVE: process.env.CORREO_SMTP_CLAVE,
     CORREO_REMITENTE: process.env.CORREO_REMITENTE,
+    CORREO_REPLY_TO: process.env.CORREO_REPLY_TO || undefined,
   });
   if (!resultado.success) {
     const faltan = resultado.error.issues.map((i) => String(i.path[0])).join(", ");
@@ -67,6 +70,12 @@ function obtenerTransporte(): Transporter {
   return transporte;
 }
 
+/** nodemailer no tipa estos campos; vienen del servidor SMTP cuando existen. */
+function extraerDetalleSmtp(error: Error): Record<string, unknown> {
+  const { code, command, response, responseCode } = error as Error & Record<string, unknown>;
+  return { code, command, response, responseCode };
+}
+
 export type Correo = {
   para: string;
   asunto: string;
@@ -85,14 +94,22 @@ export async function enviarCorreo(correo: Correo): Promise<void> {
   try {
     await obtenerTransporte().sendMail({
       from: c.CORREO_REMITENTE,
+      replyTo: c.CORREO_REPLY_TO,
       to: correo.para,
       subject: correo.asunto,
       html: correo.html,
       text: correo.texto,
     });
   } catch (error) {
-    // Solo el mensaje: nunca el cuerpo del correo ni el destinatario en el log.
-    console.error("[correo] no se pudo enviar:", error instanceof Error ? error.message : error);
+    // Prefijo distintivo para buscarlo en Runtime Logs de Vercel sin tener que
+    // correr scripts/probar-correo.ts aparte. Incluye code/command/response de
+    // nodemailer si vienen: son del servidor SMTP, nunca el destinatario ni el
+    // cuerpo del correo.
+    const detalle =
+      error instanceof Error
+        ? { mensaje: error.message, ...extraerDetalleSmtp(error) }
+        : { mensaje: String(error) };
+    console.error("[correo-fallo]", detalle);
     const fallo = new ErrorServicioExterno(
       "correo",
       "No se pudo enviar el correo. Inténtalo de nuevo en unos minutos.",
