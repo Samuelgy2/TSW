@@ -35,6 +35,7 @@
     "verificar:contenido-remoto": "tsx scripts/verificar-contenido-remoto.ts",
     "verificar": "npm run verificar:secretos && npm run verificar:paleta && npm run verificar:politicas && npm run verificar:parametros && npm run verificar:use-server && npm run verificar:club && npm run verificar:legales && npm run verificar:payload && npm run verificar:overflow && npm run verificar:visibilidad",
     "verificar:remoto": "npm run verificar:rls && npm run verificar:inventario && npm run verificar:auditoria && npm run verificar:contenido-remoto",
+    "prepare": "git config core.hooksPath .githooks || exit 0",
     "advisors": "supabase db advisors --linked --type all --level info"
   },
   "dependencies": {
