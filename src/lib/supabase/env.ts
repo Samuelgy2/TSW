@@ -14,10 +14,19 @@ const esquemaPublico = z.object({
  * Se leen por nombre completo (no con índice dinámico) porque Next.js
  * reemplaza `process.env.NEXT_PUBLIC_*` en tiempo de compilación.
  */
-export const entornoSupabase = esquemaPublico.parse({
-  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+const lectura = esquemaPublico.safeParse({
+  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL?.trim(),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim(),
 });
+
+// El ZodError crudo sale en el log de Vercel como `issues: [Array]`, sin decir
+// qué variable falla. Este mensaje sí lo dice (nombres, nunca valores).
+if (!lectura.success) {
+  const detalle = lectura.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+  throw new Error(`Entorno de Supabase inválido en el build — ${detalle}`);
+}
+
+export const entornoSupabase = lectura.data;
 
 /** Solo debe llamarse desde código de servidor. */
 export function leerServiceRoleKey(): string {
