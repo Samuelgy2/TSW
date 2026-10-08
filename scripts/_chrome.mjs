@@ -82,7 +82,7 @@ export async function abrirPestana() {
 
   return {
     async evaluar(expresion) {
-      const resultado = await pedir("Runtime.evaluate", { expression: expresion, returnByValue: true });
+      const resultado = await pedir("Runtime.evaluate", { expression: expresion, returnByValue: true, awaitPromise: true });
       return resultado.result?.value;
     },
     async fijarViewport(ancho, alto) {
