@@ -1,5 +1,6 @@
 import "server-only";
 
+import { URL_SITIO } from "@/config/sitio";
 import { VIGENCIA_CODIGO_ACCESO } from "@/features/admin/constantes";
 import {
   correoCodigoAcceso,
@@ -28,7 +29,7 @@ export type Puerta = "admin" | "usuario";
 
 /** URL canónica del sitio, sin barra final. */
 export function urlSitio(): string {
-  return (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  return URL_SITIO;
 }
 
 function callbackDe(puerta: Puerta): string {

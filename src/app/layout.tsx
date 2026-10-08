@@ -3,7 +3,7 @@ import { Archivo_Black, Barlow } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import { ProveedorCarrito } from "@/features/pedidos/carrito";
-import { SITIO } from "@/config/sitio";
+import { SITIO, URL_SITIO } from "@/config/sitio";
 
 import "@/styles/globals.css";
 
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     template: "%s | TSW",
   },
   description: SITIO.descripcion,
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  metadataBase: new URL(URL_SITIO),
 };
 
 export const viewport: Viewport = {

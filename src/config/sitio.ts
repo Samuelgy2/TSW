@@ -9,6 +9,13 @@
  * fijo (portada, matrículas, semilleros, tienda) vive en ./contenido.ts.
  */
 
+/**
+ * URL pública del sitio, sin barra final. Única fuente: metadataBase, los
+ * enlaces de correo, robots.txt y sitemap.xml salen de aquí. La variable
+ * permite apuntar a localhost o a un preview; sin ella, el dominio real.
+ */
+export const URL_SITIO = (process.env.NEXT_PUBLIC_SITE_URL || "https://www.corporaciontws.com").replace(/[/]$/, "");
+
 export const SITIO = {
   nombre: "TSW",
   nombreLargo: "Corporación Deportiva TSW",
