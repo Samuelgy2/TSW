@@ -130,8 +130,8 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Todo menos estáticos, imágenes optimizadas, favicon y el webhook de
+    // Todo menos estáticos, imágenes optimizadas, favicon, robots.txt, sitemap.xml y el webhook de
     // Wompi (que no trae cookies y no debe pagar el costo de refrescar sesión).
-    "/((?!_next/static|_next/image|favicon.ico|api/wompi/webhook|.*\\.(?:svg|png|jpg|jpeg|webp|avif|gif|ico|pdf)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/wompi/webhook|robots[.]txt|sitemap[.]xml|.*\\.(?:svg|png|jpg|jpeg|webp|avif|gif|ico|pdf)$).*)",
   ],
 };
