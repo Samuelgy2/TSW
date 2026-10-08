@@ -16,6 +16,7 @@
     "db:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts",
     "db:types:remote": "supabase gen types typescript --linked > src/lib/supabase/database.types.ts",
     "correo:probar": "node --conditions=react-server --import tsx scripts/probar-correo.ts",
+    "verificar:secretos": "node scripts/verificar-secretos.mjs",
     "verificar:paleta": "node scripts/verificar-paleta.mjs",
     "verificar:politicas": "node scripts/verificar-politicas-anon.mjs",
     "verificar:parametros": "node scripts/verificar-parametros-rpc.mjs",
@@ -32,7 +33,7 @@
     "verificar:inventario": "tsx scripts/verificar-inventario.ts",
     "verificar:auditoria": "tsx scripts/verificar-auditoria.ts",
     "verificar:contenido-remoto": "tsx scripts/verificar-contenido-remoto.ts",
-    "verificar": "npm run verificar:paleta && npm run verificar:politicas && npm run verificar:parametros && npm run verificar:use-server && npm run verificar:club && npm run verificar:legales && npm run verificar:payload && npm run verificar:overflow && npm run verificar:visibilidad",
+    "verificar": "npm run verificar:secretos && npm run verificar:paleta && npm run verificar:politicas && npm run verificar:parametros && npm run verificar:use-server && npm run verificar:club && npm run verificar:legales && npm run verificar:payload && npm run verificar:overflow && npm run verificar:visibilidad",
     "verificar:remoto": "npm run verificar:rls && npm run verificar:inventario && npm run verificar:auditoria && npm run verificar:contenido-remoto",
     "advisors": "supabase db advisors --linked --type all --level info"
   },
