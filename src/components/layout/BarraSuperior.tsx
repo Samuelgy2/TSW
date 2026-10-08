@@ -17,7 +17,8 @@ export function BarraSuperior() {
   const whatsapp = enlaceWhatsApp();
 
   return (
-    <div className="hidden bg-acento-oscuro text-blanco md:block">
+    // data-nosnippet: Google no toma el lema ni el contacto como fragmento del resultado.
+    <div data-nosnippet className="hidden bg-acento-oscuro text-blanco md:block">
       <div className="contenedor flex flex-wrap items-center justify-between gap-x-6 gap-y-1 py-2 text-sm">
         <p className="min-w-0 font-semibold">{SITIO.lema}</p>
 

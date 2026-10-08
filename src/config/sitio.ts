@@ -29,8 +29,9 @@ export const SITIO = {
    */
   logo: "/imagenes/logocorporacion.png" as string | null,
   lema: "No dudamos de las cosas maravillosas que puede hacer el deporte en el ser humano.",
+  /** Texto SEO de la portada (documento de la cliente): descripción de Google y de las tarjetas sociales. */
   descripcion:
-    "Corporación deportiva: matrículas, semilleros, competencias y dotación oficial de cada deporte.",
+    "Clubes de BMX y programa de habilidades motrices en Belén, Medellín. Formación desde los 2 años y medio hasta la competencia, con entrenadores ex atletas y licenciados en deporte.",
 } as const;
 
 /**
