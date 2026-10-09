@@ -94,11 +94,12 @@ export async function obtenerPerfil(): Promise<Sesion | null> {
 /**
  * Segundo factor (TOTP) de los administradores, obligatorio:
  *  · "ok"        sesión en nivel aal2 (o MFA apagado, ver abajo).
- *  · "verificar" tiene factor activado pero esta sesión solo pasó la contraseña
- *                (o el código de correo): falta el código de la app.
+ *  · "verificar" tiene factor activado pero esta sesión solo pasó la contraseña:
+ *                falta el código de la app.
  *  · "activar"   todavía no tiene factor: debe activarlo antes de usar el panel.
  *
- * Se lee DESPUÉS de `obtenerUsuario` (getUser valida el token contra Auth), y
+ * Se lee DESPUÉS de `obtenerUsuario` (getUser valida el token contra Auth; aquí
+ * se vuelve a validar al pasar el JWT, ver abajo), y
  * ante cualquier error responde "verificar": nunca abre por fallo.
  *
  * `ADMIN_MFA_OBLIGATORIO=false` lo apaga: red de seguridad por si un
@@ -110,7 +111,13 @@ export type EstadoMfa = "ok" | "verificar" | "activar";
 export async function estadoMfa(): Promise<EstadoMfa> {
   if (process.env.ADMIN_MFA_OBLIGATORIO === "false") return "ok";
   const supabase = await crearClienteServidor();
-  const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  // Con el JWT explícito la librería valida el usuario contra Auth (getUser)
+  // en vez de leer `session.user` de la cookie, que es lo que dispara el aviso
+  // "getSession() could be insecure". Solo se lee `access_token` de la sesión.
+  const { data: sesion } = await supabase.auth.getSession();
+  const jwt = sesion.session?.access_token;
+  if (!jwt) return "verificar";
+  const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel(jwt);
   if (error || !data) return "verificar";
   if (data.currentLevel === "aal2") return "ok";
   return data.nextLevel === "aal2" ? "verificar" : "activar";
