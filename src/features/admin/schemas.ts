@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { LARGO_CODIGO_ACCESO } from "./constantes";
 
 /**
  * Validaciones del lado del servidor para las escrituras del panel.
@@ -135,34 +134,6 @@ export const esquemaRecuperacion = z.object({
 });
 
 export type EntradaRecuperacion = z.infer<typeof esquemaRecuperacion>;
-
-/** Pedir un código de acceso por correo. Solo el correo; el destino viaja aparte. */
-export const esquemaSolicitudCodigo = z.object({
-  correo: z.string().trim().email("Escribe un correo válido."),
-});
-
-export type EntradaSolicitudCodigo = z.infer<typeof esquemaSolicitudCodigo>;
-
-/**
- * Verificar el código. El largo sale de LARGO_CODIGO_ACCESO, no de un número
- * escrito aquí: el dashboard de Supabase decide cuántos dígitos manda, y si
- * esto dijera 6 con un dashboard en 8, la pantalla rechazaría códigos
- * correctos sin llegar a consultarlos.
- */
-export const esquemaVerificacionCodigo = z.object({
-  correo: z.string().trim().email("Escribe un correo válido."),
-  codigo: z
-    .string()
-    .trim()
-    // `\\d` y no `\d`: dentro de una plantilla, `\d` se queda en la letra d.
-    .regex(
-      new RegExp(`^\\d{${LARGO_CODIGO_ACCESO}}$`),
-      `El código tiene ${LARGO_CODIGO_ACCESO} dígitos.`,
-    ),
-  redirigir: z.string().optional(),
-});
-
-export type EntradaVerificacionCodigo = z.infer<typeof esquemaVerificacionCodigo>;
 
 export const esquemaNuevaContrasena = z
   .object({

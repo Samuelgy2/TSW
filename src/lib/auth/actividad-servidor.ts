@@ -6,7 +6,7 @@ import { COOKIE_ACTIVIDAD, OPCIONES_COOKIE_ACTIVIDAD, firmarActividad } from "./
 
 /**
  * Abre (o renueva) la cookie de actividad del panel. Se llama en cada punto
- * donde un administrador obtiene sesión: contraseña, código de correo y enlace
+ * donde un administrador obtiene sesión: contraseña y enlace
  * de correo. Sin esta cookie, el middleware trata la sesión como caducada.
  */
 export async function iniciarActividad(usuarioId: string): Promise<void> {

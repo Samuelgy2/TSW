@@ -44,24 +44,3 @@ export async function buscarCuentaPorCorreo(correo: string): Promise<User | null
   }
   return null;
 }
-
-/**
- * Si ese correo corresponde a un administrador ACTIVO. Lee con service role
- * a propósito: no hay sesión de la que colgarse cuando se pregunta desde la
- * puerta de acceso.
- *
- * Un correo sin cuenta, una cuenta sin perfil, un perfil de usuario o un
- * administrador desactivado devuelven todos `false`, sin distinguirse.
- */
-export async function esAdminActivoPorCorreo(correo: string): Promise<boolean> {
-  const cuenta = await buscarCuentaPorCorreo(correo);
-  if (!cuenta) return false;
-
-  const { data } = await crearClienteAdmin()
-    .from("perfil_admin")
-    .select("activo")
-    .eq("id", cuenta.id)
-    .maybeSingle();
-
-  return data?.activo === true;
-}

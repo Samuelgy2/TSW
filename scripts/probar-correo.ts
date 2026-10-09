@@ -9,11 +9,10 @@
  *
  *   npm run correo:probar -- <destino@ejemplo.com> [plantilla]
  *
- * `plantilla` es `codigo` (por defecto), `recuperacion` o `invitacion`.
+ * `plantilla` es `recuperacion` (por defecto) o `invitacion`.
  * El destino va SIEMPRE por argumento: ninguna dirección vive en este archivo.
  *
- * Los datos son de prueba y se notan: el código es 00000000 y el enlace lleva
- * un token que no existe, así que abrirlo falla a propósito. Esto comprueba
+ * Los datos son de prueba y se notan: el enlace lleva un token que no existe, así que abrirlo falla a propósito. Esto comprueba
  * la entrega del correo, no el flujo de acceso.
  *
  * Por qué `--conditions=react-server`: los módulos de correo empiezan con
@@ -25,20 +24,17 @@
 import { cargarEnvLocal } from "./_comun";
 
 import {
-  correoCodigoAcceso,
   correoInvitacion,
   correoRestablecerContrasena,
 } from "../src/lib/correo/plantillas";
 import { enviarCorreo, type Correo } from "../src/lib/correo/transporte";
 
-type NombrePlantilla = "codigo" | "recuperacion" | "invitacion";
+type NombrePlantilla = "recuperacion" | "invitacion";
 
-const PLANTILLAS: NombrePlantilla[] = ["codigo", "recuperacion", "invitacion"];
+const PLANTILLAS: NombrePlantilla[] = ["recuperacion", "invitacion"];
 
 /** Datos de prueba, evidentes a simple vista. Nada de tokens reales. */
-const CODIGO_DE_PRUEBA = "00000000";
 const NOMBRE_DE_PRUEBA = "[Nombre de prueba]";
-const VIGENCIA_DE_PRUEBA = "en [plazo de prueba]";
 
 function enlaceDePrueba(): string {
   const sitio = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
@@ -74,27 +70,20 @@ function armar(plantilla: NombrePlantilla, destino: string): Correo {
         nombre: NOMBRE_DE_PRUEBA,
         tipo: "admin",
       });
-    case "codigo":
-      return correoCodigoAcceso({
-        para: destino,
-        codigo: CODIGO_DE_PRUEBA,
-        vigencia: VIGENCIA_DE_PRUEBA,
-        nombre: NOMBRE_DE_PRUEBA,
-      });
   }
 }
 
 function uso(motivo: string): never {
   console.error(`\n${motivo}\n`);
   console.error("Uso:  npm run correo:probar -- <destino@ejemplo.com> [plantilla]");
-  console.error(`      plantilla: ${PLANTILLAS.join(" | ")}  (por defecto: codigo)\n`);
+  console.error(`      plantilla: ${PLANTILLAS.join(" | ")}  (por defecto: recuperacion)\n`);
   process.exit(2);
 }
 
 async function principal(): Promise<void> {
   cargarEnvLocal();
 
-  const [destino, plantillaArg = "codigo"] = process.argv.slice(2);
+  const [destino, plantillaArg = "recuperacion"] = process.argv.slice(2);
 
   if (!destino) uso("Falta la dirección de destino.");
   // Validación mínima: solo evitar un envío a algo que no es un correo.

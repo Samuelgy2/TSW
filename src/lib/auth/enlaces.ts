@@ -1,15 +1,9 @@
 import "server-only";
 
 import { URL_SITIO } from "@/config/sitio";
-import { VIGENCIA_CODIGO_ACCESO } from "@/features/admin/constantes";
-import {
-  correoCodigoAcceso,
-  correoInvitacion,
-  correoRestablecerContrasena,
-} from "@/lib/correo/plantillas";
+import { correoInvitacion, correoRestablecerContrasena } from "@/lib/correo/plantillas";
 import { enviarCorreo } from "@/lib/correo/transporte";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
-import { esAdminActivoPorCorreo } from "./cuentas";
 
 /**
  * Enlaces de acceso por correo (restablecer contraseña e invitaciones).
@@ -76,45 +70,4 @@ export async function enviarInvitacion(correo: string, puerta: Puerta, nombre?: 
   const enlace = await generarEnlaceContrasena(correo, puerta);
   if (!enlace) throw new Error("La cuenta no existe en Auth: no hay a quién invitar.");
   await enviarCorreo(correoInvitacion({ para: correo, enlace, nombre, tipo: puerta }));
-}
-
-/**
- * Código de acceso de un solo uso para entrar al panel sin contraseña.
- *
- * Supabase genera y valida el código; aquí solo se entrega. NO se genera ni
- * se compara nada por nuestra cuenta: un generador propio sería otro secreto
- * que guardar y otra comparación que equivocar.
- *
- * ORDEN OBLIGATORIO, y no es una preferencia de estilo: `generateLink` de
- * tipo `magiclink` **crea la cuenta** si el correo no existe. Medido contra
- * el proyecto real el 2026-09-22: con un correo inventado devolvió un `user`
- * nuevo y auth.users pasó de 4 filas a 5. Comprobar primero que el correo sea
- * de un administrador activo es lo único que impide que esta pantalla, que es
- * pública, sirva para sembrar cuentas.
- *
- * Devuelve false cuando el correo no corresponde a un administrador activo.
- * Quien llama DEBE responder lo mismo en los dos casos.
- */
-export async function enviarCodigoAcceso(correo: string): Promise<boolean> {
-  if (!(await esAdminActivoPorCorreo(correo))) return false;
-
-  const { data, error } = await crearClienteAdmin().auth.admin.generateLink({
-    type: "magiclink",
-    email: correo,
-  });
-  if (error) throw error;
-
-  const codigo = data.properties?.email_otp;
-  // Sin el código no hay nada que mandar, y el mensaje no lo incluye: un
-  // error con el código dentro acabaría en el log del servidor.
-  if (!codigo) throw new Error("Supabase no devolvió el código de acceso.");
-
-  await enviarCorreo(
-    correoCodigoAcceso({
-      para: correo,
-      codigo,
-      vigencia: VIGENCIA_CODIGO_ACCESO,
-    }),
-  );
-  return true;
 }
