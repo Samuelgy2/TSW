@@ -90,6 +90,13 @@ export async function cerrarSesion(): Promise<void> {
   redirect(RUTA_LOGIN);
 }
 
+/** Cierre disparado por el temporizador de inactividad del navegador: vuelve al acceso con el aviso. */
+export async function cerrarSesionPorInactividad(): Promise<void> {
+  const supabase = await crearClienteServidor();
+  await supabase.auth.signOut();
+  redirect(`${RUTA_LOGIN}?sesion=expirada`);
+}
+
 /**
  * Envía el enlace de recuperación. La respuesta es la misma exista o no el
  * correo, por la misma razón que en el acceso. El enlace vuelve por

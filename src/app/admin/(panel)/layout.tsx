@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { ArmazonPanel } from "@/components/admin/ArmazonPanel";
 import { ExpulsorInactividad } from "@/components/auth/ExpulsorInactividad";
-import { cerrarSesion } from "@/features/admin/acciones";
+import { cerrarSesionPorInactividad } from "@/features/admin/acciones";
 import { exigirAdminPagina } from "@/lib/auth";
 import { deporteActivo, listarOpcionesSelectorPanel } from "@/features/cuenta/deporte-servidor";
 
@@ -27,7 +27,7 @@ export default async function LayoutPanel({ children }: { children: ReactNode })
 
   return (
     <ArmazonPanel correo={usuario.email ?? "administrador"} deporte={deporte} deportes={deportes}>
-      <ExpulsorInactividad alExpirar={cerrarSesion} latido="/admin/latido" />
+      <ExpulsorInactividad alExpirar={cerrarSesionPorInactividad} latido="/admin/latido" />
       {children}
     </ArmazonPanel>
   );
