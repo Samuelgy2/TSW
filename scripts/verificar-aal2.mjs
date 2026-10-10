@@ -70,4 +70,17 @@ try {
   const { data: resto } = await servicio.from("perfil_admin").select("id").eq("id", id);
   const { data: u } = await servicio.auth.admin.getUserById(id);
   console.log("temporal borrado:", !u?.user && resto?.length === 0 ? "sí" : "NO — revisar " + id);
+
+  // Barrido final: ningún verificacion-aal2-… (de esta corrida o de una anterior
+  // que murió a medias) en auth.users ni en perfil_admin.
+  const { data: lista, error: el } = await servicio.auth.admin.listUsers({ perPage: 1000 });
+  const sobrantes = (lista?.users ?? []).filter((x) => x.email?.startsWith("verificacion-aal2-"));
+  const { data: perfiles } = await servicio.from("perfil_admin").select("id").in("id", sobrantes.map((x) => x.id));
+  if (el || sobrantes.length > 0 || (perfiles?.length ?? 0) > 0) {
+    console.error("\n!!!!!!!! QUEDAN USUARIOS DE PRUEBA verificacion-aal2-… !!!!!!!!");
+    console.error(el ? "No se pudo listar: " + el.message : sobrantes.map((x) => `${x.id} ${x.email}`).join("\n"));
+    process.exitCode = 1;
+  } else {
+    console.log("barrido final: 0 usuarios verificacion-aal2-… en auth.users ni perfil_admin");
+  }
 }
