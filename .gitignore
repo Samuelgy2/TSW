@@ -4,10 +4,10 @@
 .pnp.*
 
 # build
+# Cualquier carpeta de salida de Next: `.next` y las de NEXT_DIST_DIR
+# (.next-verificar, .next-verificar-dev, .next-seo, .next-prueba-*…).
 /.next/
-/.next-verificar/
-/.next-verificar-dev/
-/.next-prueba-*/
+/.next-*/
 /out/
 /build
 next-env.d.ts.timestamp
@@ -37,9 +37,6 @@ yarn-error.log*
 # scripts de un solo uso: nunca -c/-e/heredocs sueltos, siempre a un archivo aquí
 /scripts/tmp/*
 !/scripts/tmp/.gitkeep
-
-# salida de build de chequeos
-/.next-check/
 
 # vercel
 .vercel
