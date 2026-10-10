@@ -27,7 +27,9 @@ export function DocumentosAdmin({ documentos }: { documentos: DocumentoConVersio
   const router = useRouter();
   const [pendiente, iniciar] = useTransition();
   const [aviso, setAviso] = useState<Resultado | null>(null);
-  const [editando, setEditando] = useState<DocumentoConVersiones | "nuevo" | null>(null);
+  // Se guarda el id (no el objeto): el editor lee la fila fresca tras router.refresh().
+  const [editandoId, setEditandoId] = useState<string | "nuevo" | null>(null);
+  const editando = editandoId === "nuevo" ? "nuevo" : (documentos.find((d) => d.id === editandoId) ?? null);
   const [publicando, setPublicando] = useState<DocumentoConVersiones | null>(null);
   const [historial, setHistorial] = useState<DocumentoConVersiones | null>(null);
 
@@ -46,7 +48,7 @@ export function DocumentosAdmin({ documentos }: { documentos: DocumentoConVersio
       {aviso?.ok && aviso.mensaje && <Aviso tono="exito" titulo="Listo">{aviso.mensaje}</Aviso>}
 
       <div className="flex justify-end">
-        <Boton onClick={() => setEditando("nuevo")} disabled={pendiente}>
+        <Boton onClick={() => setEditandoId("nuevo")} disabled={pendiente}>
           Nuevo documento
         </Boton>
       </div>
@@ -99,7 +101,7 @@ export function DocumentosAdmin({ documentos }: { documentos: DocumentoConVersio
                 <Boton tamano="sm" variante="fantasma" onClick={() => setHistorial(d)}>
                   Historial
                 </Boton>
-                <Boton tamano="sm" variante="fantasma" onClick={() => setEditando(d)}>
+                <Boton tamano="sm" variante="fantasma" onClick={() => setEditandoId(d.id)}>
                   Editar
                 </Boton>
                 <Boton
@@ -122,9 +124,13 @@ export function DocumentosAdmin({ documentos }: { documentos: DocumentoConVersio
         </p>
       )}
 
+      {/* key: ModalDocumento inicializa su formulario con useState, que solo lee
+          el valor inicial al montar; el modal está siempre montado, así que sin
+          key arrancaba vacío al pulsar Editar. */}
       <ModalDocumento
+        key={editandoId ?? "cerrado"}
         documento={editando}
-        alCerrar={() => setEditando(null)}
+        alCerrar={() => setEditandoId(null)}
         alGuardar={guardarDocumento}
         onGuardado={(resultado) => {
           setAviso(resultado);

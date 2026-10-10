@@ -486,7 +486,14 @@ export async function prepararVersionDocumento(documentoId: string, mime: string
     const invalido = validarDeclarado(mime, tamano, OPCIONES_PDF);
     if (invalido) return { ok: false, error: invalido };
 
-    const version = await ejecutarRpc("siguiente_version_documento", { p_documento_id: documentoId });
+    // No pasa por ejecutarRpc: es una lectura sin escritura ni bitácora, y
+    // ejecutarRpc inyecta p_actor_id, que esta función no tiene (PGRST202:
+    // "Could not find the function … (p_actor_id, p_documento_id)"). Eso hacía
+    // fallar toda subida de PDF en el primer paso.
+    const { data: version, error: errorVersion } = await crearClienteAdmin().rpc("siguiente_version_documento", {
+      p_documento_id: documentoId,
+    });
+    if (errorVersion || version === null) throw errorVersion ?? new Error("siguiente_version_documento sin resultado");
     const ruta = `documentos/${documentoId}/v${version}/${crypto.randomUUID()}.pdf`;
     return { ok: true, bucket: BUCKET_DOCUMENTOS, ruta, token: await firmarSubida(BUCKET_DOCUMENTOS, ruta) };
   } catch (error) {
