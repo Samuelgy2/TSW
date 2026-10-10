@@ -1045,6 +1045,7 @@ export type Database = {
         Returns: undefined
       }
       es_admin: { Args: never; Returns: boolean }
+      es_admin_aal2: { Args: never; Returns: boolean }
       es_usuario: { Args: never; Returns: boolean }
       establecer_actor: { Args: { p_actor_id: string }; Returns: undefined }
       establecer_imagen_competencia: {
