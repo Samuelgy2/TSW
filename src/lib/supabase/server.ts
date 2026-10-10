@@ -3,6 +3,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
+import { comoCookieDeSesion } from "./cookies-sesion";
 import { entornoSupabase } from "./env";
 import type { Database } from "./database.types";
 
@@ -24,7 +25,7 @@ export async function crearClienteServidor() {
         setAll(cookiesNuevas) {
           try {
             for (const { name, value, options } of cookiesNuevas) {
-              almacenCookies.set(name, value, options);
+              almacenCookies.set(name, value, comoCookieDeSesion(options, value));
             }
           } catch {
             // Un Server Component no puede escribir cookies. El middleware ya

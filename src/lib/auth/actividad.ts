@@ -24,7 +24,7 @@ export const OPCIONES_COOKIE_ACTIVIDAD = {
   sameSite: "lax",
   secure: process.env.NODE_ENV === "production",
   path: "/admin",
-  maxAge: 60 * 60 * 12,
+  // Sin maxAge: cookie de sesión del navegador. Cerrar el navegador cierra el panel.
 } as const;
 
 const codificar = new TextEncoder();

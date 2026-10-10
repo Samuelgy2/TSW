@@ -7,6 +7,7 @@ import {
   actividadVigente,
   firmarActividad,
 } from "@/lib/auth/actividad";
+import { comoCookieDeSesion } from "@/lib/supabase/cookies-sesion";
 import {
   RUTA_ACCESO_USUARIO,
   RUTA_LOGIN,
@@ -79,7 +80,7 @@ export async function middleware(request: NextRequest) {
           }
           respuesta = NextResponse.next({ request });
           for (const { name, value, options } of cookiesNuevas) {
-            respuesta.cookies.set(name, value, options);
+            respuesta.cookies.set(name, value, comoCookieDeSesion(options, value));
           }
         },
       },
