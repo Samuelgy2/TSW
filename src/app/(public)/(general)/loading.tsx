@@ -1,6 +1,11 @@
 import { Contenedor, Skeleton, SkeletonFilas, SkeletonHero } from "@/components/ui";
 
-/** Portada y páginas sin `loading.tsx` propio (legales, laboratorio). */
+/**
+ * Portada, laboratorio y legales. Viven en el grupo `(general)` y no en la raíz
+ * de `(public)` para que este esqueleto no envuelva a las demás secciones: un
+ * `loading.tsx` por encima de un layout lo deja dentro del Suspense, y el
+ * `notFound()` de `/semilleros/<slug>` saldría con 200 (soft 404).
+ */
 export default function CargandoPublico() {
   return (
     <>
