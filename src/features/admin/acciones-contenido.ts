@@ -87,6 +87,23 @@ export async function alternarDocumento(id: string, activo: boolean): Promise<Re
 
 const OPCIONES_PDF = { mimesPermitidos: MIMES_PDF, maximoBytes: MAXIMO_PDF_BYTES };
 
+/** Forma exacta de la ruta que firma `prepararVersionDocumento`: documentos/<doc>/v<n>/<uuid>.pdf */
+const RUTA_VERSION_DOCUMENTO = /^documentos\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/v(\d+)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.pdf$/;
+
+/**
+ * ¿Alguna fila de documento_version apunta ya a esta ruta? Si sí, el archivo
+ * está publicado y ningún camino de error de esta acción puede borrarlo. Ante
+ * un fallo de la consulta responde true: no borrar es el lado seguro.
+ */
+async function rutaYaReferenciada(ruta: string): Promise<boolean> {
+  const { data, error } = await crearClienteAdmin()
+    .from("documento_version")
+    .select("id")
+    .eq("storage_path", ruta)
+    .limit(1);
+  return Boolean(error) || (data?.length ?? 0) > 0;
+}
+
 /**
  * Publicar una versión nueva: la única forma de cambiar el archivo de un
  * documento. Es el paso 3 de la subida directa (ver `subida-directa.ts`): el
@@ -114,6 +131,9 @@ export async function publicarVersionDocumento(entrada: EntradaPublicarVersion):
     if (!partes || partes[1] !== d.documentoId) return { ok: false, error: "La ruta no corresponde a este documento." };
     const version = Number(partes[2]);
 
+    // Ruta ya publicada (reenvío, doble clic o ruta ajena): nada que subir ni que borrar.
+    if (await rutaYaReferenciada(d.storagePath)) return { ok: false, error: "Esa ruta ya está publicada." };
+
     const verificada = await verificarSubida(BUCKET_DOCUMENTOS, d.storagePath, OPCIONES_PDF);
     if (!verificada.ok) return verificada;
 
@@ -127,7 +147,8 @@ export async function publicarVersionDocumento(entrada: EntradaPublicarVersion):
         p_tamano_bytes: verificada.tamano,
       });
     } catch (error) {
-      await descartarSubida(BUCKET_DOCUMENTOS, d.storagePath);
+      // Si la RPC alcanzó a insertar y falló la respuesta, la fila ya cita la ruta: no se borra.
+      if (!(await rutaYaReferenciada(d.storagePath))) await descartarSubida(BUCKET_DOCUMENTOS, d.storagePath);
       throw error;
     }
 
