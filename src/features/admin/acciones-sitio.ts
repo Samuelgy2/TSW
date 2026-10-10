@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { exigirAdmin } from "@/lib/auth";
 import { ErrorApp } from "@/lib/errors";
+import { aSlug } from "@/lib/utils/formato";
 import { crearClienteServidor } from "@/lib/supabase/server";
 import {
   BUCKET_SITIO,
@@ -19,6 +20,7 @@ import { ejecutarRpc, revalidarPublico } from "./mutations";
 import {
   esquemaClub,
   esquemaDeportePanel,
+  esquemaNuevoDeporte,
   esquemaReordenarSlidesCarrusel,
   esquemaSlideCarrusel,
   type EntradaSlideCarrusel,
@@ -277,6 +279,49 @@ export async function guardarDeporte(entrada: unknown): Promise<ResultadoEscritu
     });
     revalidarDeportes();
     return { ok: true, mensaje: "Deporte guardado." };
+  } catch (error) {
+    return { ok: false, error: mensajeDe(error) };
+  }
+}
+
+/**
+ * Crea un deporte por `guardar_deporte` (p_id nulo). Nace DESACTIVADO (lo fija la
+ * RPC, migración 20261010140000): no sale en el sitio hasta que se active. El
+ * slug se deriva del nombre aquí, en el servidor, y es inmutable después; una
+ * colisión de slug o de nombre la devuelve la RPC como constraint traducido.
+ * No hay eliminar: se desactiva.
+ */
+export async function crearDeporte(entrada: unknown): Promise<ResultadoEscritura> {
+  const datos = esquemaNuevoDeporte.safeParse(entrada);
+  if (!datos.success) return { ok: false, error: datos.error.issues[0]?.message ?? "Revisa los datos." };
+
+  try {
+    await exigirAdmin();
+    const d = datos.data;
+    const slug = aSlug(d.nombre);
+    if (!slug) return { ok: false, error: "El nombre debe llevar al menos una letra o un número." };
+
+    const supabase = await crearClienteServidor();
+    const { data: ultimo, error } = await supabase
+      .from("deporte")
+      .select("orden")
+      .order("orden", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+
+    await ejecutarRpc("guardar_deporte", {
+      p_id: undefined, // sin id = alta; explícito porque el cuerpo lo lee (verificar:parametros)
+      p_slug: slug,
+      p_nombre: d.nombre,
+      p_categoria: d.categoria,
+      p_descripcion: d.descripcion,
+      p_puntos: d.puntos,
+      p_pie: d.pie,
+      p_orden: (ultimo?.orden ?? -1) + 1,
+    });
+    revalidarDeportes();
+    return { ok: true, mensaje: `«${d.nombre}» creado y desactivado. Cárgale contenido y actívalo cuando esté listo.` };
   } catch (error) {
     return { ok: false, error: mensajeDe(error) };
   }

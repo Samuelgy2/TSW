@@ -178,7 +178,7 @@ const MENSAJE_POR_CONSTRAINT: Record<string, Traduccion> = {
   // migración 05: pedidos
   pedido_item_variante_unica: conflicto("Ese pedido ya tiene una línea con esa variante."),
   // migración 22: deporte (el nombre es un índice único, Postgres lo reporta igual)
-  deporte_slug_unico: validacion("Ya existe otro deporte con ese identificador."),
+  deporte_slug_unico: validacion("Ya existe un deporte con un nombre equivalente (el identificador sale del nombre)."),
   deporte_nombre_unico: validacion("Ya existe otro deporte con ese nombre."),
 };
 

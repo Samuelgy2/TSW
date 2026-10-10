@@ -79,6 +79,9 @@ export const esquemaDeportePanel = z.object({
   pie: z.string().trim().max(120, "El pie de tarjeta admite hasta 120 caracteres."),
 });
 
+/** Alta: los mismos campos sin `id`. El slug lo deriva el servidor del nombre. */
+export const esquemaNuevoDeporte = esquemaDeportePanel.omit({ id: true });
+
 export type EntradaDeportePanel = z.infer<typeof esquemaDeportePanel>;
 
 // --- Carrusel de la portada (migración 21) -----------------------------------

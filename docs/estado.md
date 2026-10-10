@@ -39,6 +39,18 @@ el contenido del sitio editable desde el panel.
   `borrar_pedido_de_prueba`) esperan filas y archivos que solo existen en
   producción y abortan en una base vacía.
 
+## Deportes: crear sí, eliminar no (2026-10-10)
+
+- «Agregar deporte» en la lista de `/admin/sitio` → `crearDeporte` → `guardar_deporte`
+  con `p_id` nulo. Nace **desactivado** (migración `20261010140000_deporte_nace_desactivado`,
+  pendiente de `db push`); se activa con Reactivar cuando tenga contenido.
+- El slug sale del nombre en el servidor (`aSlug`) y es **inmutable** (la RPC rechaza
+  cambiarlo; el formulario de edición no lo expone): no hay URLs que redirigir.
+- **Decisión: no hay eliminar deporte.** Lo referencian diapositivas del carrusel y,
+  luego, clubes; se desactiva. Un borrado arrastraría datos relacionados.
+- Un deporte no tiene página ni entrada en el sitemap: vive en el hero, «Nuestros
+  deportes» y `?deporte=` (selector público apagado).
+
 ## Hecho
 
 **Parte E — contenido real** (commits `5be7097`, `708341c`)

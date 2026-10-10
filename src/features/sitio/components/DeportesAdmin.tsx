@@ -2,18 +2,19 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 
 import { AreaTexto, Archivo, Aviso, Badge, Boton, Campo, Modal, PieModal } from "@/components/ui";
 import {
   alternarDeporte,
   confirmarImagenDeporte,
+  crearDeporte,
   guardarDeporte,
   prepararImagenDeporte,
   quitarImagenDeporte,
 } from "@/features/admin/acciones-sitio";
 import type { DeportePanel } from "@/features/admin/queries-contenido";
-import { esquemaDeportePanel } from "@/features/admin/schemas";
+import { esquemaDeportePanel, esquemaNuevoDeporte } from "@/features/admin/schemas";
 import { subirDirecto } from "@/features/admin/subir-directo";
 import { elegirDeporte } from "@/features/cuenta/acciones-vista-previa";
 import { MAXIMO_IMAGEN_SITIO_BYTES, MIMES_IMAGEN_SITIO, resolverImagenSitio } from "../imagenes";
@@ -61,6 +62,7 @@ function ListaDeportes({ deportes }: { deportes: DeportePanel[] }) {
   const [pendiente, setPendiente] = useState<string | null>(null);
   const [aDesactivar, setADesactivar] = useState<DeportePanel | null>(null);
   const [mensaje, setMensaje] = useState<Mensaje>(null);
+  const [creando, setCreando] = useState(false);
 
   const activos = deportes.filter((d) => d.activo).length;
 
@@ -89,6 +91,11 @@ function ListaDeportes({ deportes }: { deportes: DeportePanel[] }) {
 
   return (
     <div className="flex flex-col gap-4">
+      <Boton tamano="sm" onClick={() => setCreando(true)} className="self-start">
+        Agregar deporte
+      </Boton>
+      <ModalNuevoDeporte abierto={creando} alCerrar={() => setCreando(false)} />
+
       {mensaje && <Aviso tono={mensaje.tono}>{mensaje.texto}</Aviso>}
 
       <ul className="flex flex-col gap-3">
@@ -160,6 +167,103 @@ function ListaDeportes({ deportes }: { deportes: DeportePanel[] }) {
         </p>
       </Modal>
     </div>
+  );
+}
+
+// --- Campos compartidos por «Agregar deporte» y la ficha ---------------------------
+
+type BorradorDeporte = { nombre: string; categoria: string; descripcion: string; puntos: string[]; pie: string };
+
+const BORRADOR_VACIO: BorradorDeporte = { nombre: "", categoria: "", descripcion: "", puntos: [], pie: "" };
+
+function CamposDeporte({
+  borrador,
+  setBorrador,
+}: {
+  borrador: BorradorDeporte;
+  setBorrador: Dispatch<SetStateAction<BorradorDeporte>>;
+}) {
+  return (
+    <>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Campo
+          etiqueta="Nombre"
+          required
+          maxLength={60}
+          value={borrador.nombre}
+          onChange={(e) => setBorrador((b) => ({ ...b, nombre: e.target.value }))}
+        />
+        <Campo
+          etiqueta="Categoría (etiqueta corta sobre la foto)"
+          maxLength={80}
+          value={borrador.categoria}
+          onChange={(e) => setBorrador((b) => ({ ...b, categoria: e.target.value }))}
+        />
+      </div>
+      <AreaTexto
+        etiqueta="Descripción"
+        maxLength={600}
+        rows={4}
+        value={borrador.descripcion}
+        onChange={(e) => setBorrador((b) => ({ ...b, descripcion: e.target.value }))}
+      />
+      <ListaTextoEditable
+        etiqueta="Puntos destacados"
+        items={borrador.puntos}
+        alCambiar={(puntos) => setBorrador((b) => ({ ...b, puntos }))}
+      />
+      <Campo
+        etiqueta="Pie de tarjeta"
+        maxLength={120}
+        value={borrador.pie}
+        onChange={(e) => setBorrador((b) => ({ ...b, pie: e.target.value }))}
+      />
+    </>
+  );
+}
+
+/** Modal de alta. El deporte nace desactivado; la foto se sube desde su ficha. */
+function ModalNuevoDeporte({ abierto, alCerrar }: { abierto: boolean; alCerrar: () => void }) {
+  const router = useRouter();
+  const [borrador, setBorrador] = useState(BORRADOR_VACIO);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function crear() {
+    setError(null);
+    const validado = esquemaNuevoDeporte.safeParse(borrador);
+    if (!validado.success) {
+      setError(validado.error.issues[0]?.message ?? "Revisa los datos.");
+      return;
+    }
+    setGuardando(true);
+    const resultado = await crearDeporte(validado.data);
+    setGuardando(false);
+    if (!resultado.ok) {
+      setError(resultado.error);
+      return;
+    }
+    setBorrador(BORRADOR_VACIO);
+    alCerrar();
+    router.refresh();
+  }
+
+  return (
+    <Modal
+      abierto={abierto}
+      alCerrar={alCerrar}
+      titulo="Agregar deporte"
+      pie={<PieModal alCerrar={alCerrar} onGuardar={() => void crear()} cargando={guardando} etiquetaGuardar="Crear deporte" />}
+    >
+      <div className="flex flex-col gap-4">
+        <p className="text-sm text-texto-sec">
+          Se crea <strong>desactivado</strong>: no se ve en el sitio hasta que lo actives. El identificador de la URL sale
+          del nombre y no se puede cambiar después.
+        </p>
+        {error && <Aviso tono="error">{error}</Aviso>}
+        <CamposDeporte borrador={borrador} setBorrador={setBorrador} />
+      </div>
+    </Modal>
   );
 }
 
@@ -311,39 +415,7 @@ function FichaDeporte({ deporte }: { deporte: DeportePanel }) {
         <div className="flex flex-col gap-4 border-t border-gris-borde pt-4">
           <h4 className="text-sm font-semibold text-azul-profundo">Datos del deporte</h4>
           {mensajeDatos && <Aviso tono={mensajeDatos.tono}>{mensajeDatos.texto}</Aviso>}
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Campo
-              etiqueta="Nombre"
-              required
-              maxLength={60}
-              value={borrador.nombre}
-              onChange={(e) => setBorrador((b) => ({ ...b, nombre: e.target.value }))}
-            />
-            <Campo
-              etiqueta="Categoría (etiqueta corta sobre la foto)"
-              maxLength={80}
-              value={borrador.categoria}
-              onChange={(e) => setBorrador((b) => ({ ...b, categoria: e.target.value }))}
-            />
-          </div>
-          <AreaTexto
-            etiqueta="Descripción"
-            maxLength={600}
-            rows={4}
-            value={borrador.descripcion}
-            onChange={(e) => setBorrador((b) => ({ ...b, descripcion: e.target.value }))}
-          />
-          <ListaTextoEditable
-            etiqueta="Puntos destacados"
-            items={borrador.puntos}
-            alCambiar={(puntos) => setBorrador((b) => ({ ...b, puntos }))}
-          />
-          <Campo
-            etiqueta="Pie de tarjeta"
-            maxLength={120}
-            value={borrador.pie}
-            onChange={(e) => setBorrador((b) => ({ ...b, pie: e.target.value }))}
-          />
+          <CamposDeporte borrador={borrador} setBorrador={setBorrador} />
           <div className="flex justify-end">
             <Boton onClick={guardar} cargando={guardando}>
               Guardar deporte
