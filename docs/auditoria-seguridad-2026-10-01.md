@@ -29,7 +29,7 @@ Primera tanda: **bajas e informativas**. Las medias (1 a 4) quedan pendientes y 
 | # | Estado |
 |---|---|
 | 1 | Cabeceras puestas y comprobadas en local; **falta la CSP** y verlas en producción |
-| 1 (CSP) | Puesta en **Report-Only** (solo producción). Pasar a bloqueo tras revisar el panel con la consola abierta |
+| 1 (CSP) | En **bloqueo** (solo producción), con `'unsafe-inline'` en script y style porque Next inyecta scripts en línea. Probada en un build de producción; el panel con sesión no se recorrió con la consola abierta |
 | 2 | Corregido: además del conteo por `IP|correo`, 20 fallos desde una IP la bloquean 5 min |
 | 3 | Implementado el TOTP obligatorio (`/admin/verificar`, `/admin/seguridad`, guardia aal2 en `exigirAdmin*`). **Pendiente de prueba con tu cuenta**. Falta la acción para quitar el factor de otro administrador |
 | 4 | Implementado: cookie firmada `tsw.actividad` (HMAC, atada al usuario) que el middleware exige y renueva en `/admin/*`, con latido del navegador cada minuto. Solo administradores; probado con un usuario temporal |

@@ -4,9 +4,9 @@ import type { NextConfig } from "next";
 
 const supabaseUrl = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:54321");
 
-// CSP en modo Report-Only: el navegador anota las violaciones en la consola y no
-// bloquea nada. Para pasar a bloqueo, cambiar la clave a Content-Security-Policy
-// cuando una vuelta por el sitio y el panel no deje violaciones.
+// CSP en bloqueo (solo producción). Si una pantalla deja de cargar algo y la
+// consola dice "Content Security Policy", falta ese origen aquí. Para volver a
+// solo avisar sin bloquear, cambiar la clave a Content-Security-Policy-Report-Only.
 // 'unsafe-inline' en script y style: Next inyecta scripts en línea y exigiría
 // nonces, que obligan a render dinámico en todas las páginas. Lo que sí
 // cierra: orígenes ajenos, iframes, <base>, <object> y formularios hacia fuera.
@@ -51,7 +51,7 @@ const nextConfig: NextConfig = {
   // —el móvil, por ejemplo— en vez de localhost.
   allowedDevOrigins: ["192.168.13.1", "localhost", "127.0.0.1"],
   // Cabeceras de seguridad en todas las rutas. Sin iframes en el sitio, así que
-  // DENY no rompe nada. La CSP va en Report-Only (ver arriba).
+  // DENY no rompe nada. La CSP, arriba.
   async headers() {
     return [
       {
@@ -64,7 +64,7 @@ const nextConfig: NextConfig = {
           { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
           // En desarrollo React usa eval y llenaría la consola de ruido.
           ...(process.env.NODE_ENV === "production"
-            ? [{ key: "Content-Security-Policy-Report-Only", value: CSP }]
+            ? [{ key: "Content-Security-Policy", value: CSP }]
             : []),
         ],
       },
