@@ -1,5 +1,5 @@
 /**
- * Comprobación de las reglas de selección de club de `/semilleros`.
+ * Comprobación de las reglas de selección de club de `/semilleros[/<slug>]`.
  *
  * Son cuatro casos y ninguno se puede provocar contra el remoto sin desactivar
  * clubes de verdad, así que van aquí, sobre la función real —no una copia—:
@@ -7,7 +7,7 @@
  */
 import assert from "node:assert/strict";
 
-import { clubDeParametros, clubPorDefecto } from "../src/features/publico/club-publico";
+import { clubDeSlug, clubPorDefecto } from "../src/features/publico/club-publico";
 import type { Club } from "../src/features/clubes/types";
 
 const club = (slug: string, tipo: "club" | "programa", orden: number) =>
@@ -20,8 +20,8 @@ const programa = club("habilidades-motrices", "programa", 3);
 
 const casos: [string, () => void][] = [
   [
-    "sin ?club se elige el primer CLUB por orden",
-    () => assert.equal(clubDeParametros([tsw, master, programa], {}).club?.slug, "bmx-club-tsw"),
+    "sin slug se elige el primer CLUB por orden",
+    () => assert.equal(clubPorDefecto([tsw, master, programa])?.slug, "bmx-club-tsw"),
   ],
   [
     "un programa de primero no se lleva el puesto: se salta al primer club",
@@ -35,20 +35,16 @@ const casos: [string, () => void][] = [
     "con la lista vacía no hay nada que elegir",
     () => {
       assert.equal(clubPorDefecto([]), null);
-      assert.equal(clubDeParametros([], {}).estado, "desconocido");
+      assert.equal(clubDeSlug([], "bmx-club-tsw"), null);
     },
   ],
   [
     "un slug que existe gana sobre el orden",
-    () => {
-      const r = clubDeParametros([tsw, master], { club: "bmx-mastercross" });
-      assert.equal(r.estado, "elegido");
-      assert.equal(r.club?.slug, "bmx-mastercross");
-    },
+    () => assert.equal(clubDeSlug([tsw, master], "bmx-mastercross")?.slug, "bmx-mastercross"),
   ],
   [
     "un slug que no existe NO cae al primero en silencio",
-    () => assert.equal(clubDeParametros([tsw, master], { club: "no-existe" }).estado, "desconocido"),
+    () => assert.equal(clubDeSlug([tsw, master], "no-existe"), null),
   ],
 ];
 

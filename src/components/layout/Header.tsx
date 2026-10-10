@@ -32,7 +32,7 @@ function navegacionConClubes(clubes: ClubMenu[]): EnlaceNav[] {
     href: "/semilleros",
     submenu: clubes.map((club) => ({
       etiqueta: club.nombre,
-      href: `/semilleros?club=${club.slug}`,
+      href: `/semilleros/${club.slug}`,
       descripcion: club.etiqueta ?? (club.tipo === "programa" ? "Programa" : "Club"),
     })),
   };

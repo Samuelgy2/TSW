@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Aparece } from "@/lib/animaciones";
 import {
   Acordeon,
-  Aviso,
   BloqueCTA,
   Boton,
   BotonWhatsApp,
@@ -22,70 +21,79 @@ import { resolverImagenSitio } from "@/features/sitio/imagenes";
 import { obtenerSemilleros } from "@/features/sitio/queries";
 import type { EntradaSemilleros } from "@/features/sitio/schemas";
 import { SelectorClubPublico } from "@/features/publico/components/SelectorClubPublico";
-import { clubDeParametros, clubPorDefecto, type ParametrosBusqueda } from "@/features/publico/club-publico";
+import { notFound } from "next/navigation";
+import { clubDeSlug, clubPorDefecto } from "@/features/publico/club-publico";
 
 const TITULO = "Niveles de formación";
 const DESCRIPCION =
   "Niveles Minirider, Intermedio y Avanzado de BMX Club TSW y BMX Mastercross: edades, horarios y cómo avanzar. Clase de prueba gratis.";
 
-/**
- * El `canonical` apunta a `/semilleros` a secas cuando el `?club=` pedido no
- * existe: esa URL muestra el club por defecto, así que sin canónica quedarían
- * dos direcciones indexables con el mismo contenido y una de ellas prometiendo
- * un club que no está.
- */
-export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const [clubes, parametros] = await Promise.all([listarClubes(), searchParams]);
-  const seleccion = clubDeParametros(clubes, parametros);
+type Props = { params: Promise<{ club?: string[] }> };
 
-  return {
-    title: TITULO,
-    description: DESCRIPCION,
-    openGraph: { title: `${TITULO} | TSW`, description: DESCRIPCION, type: "website" },
-    ...(seleccion.estado === "desconocido" ? { alternates: { canonical: "/semilleros" } } : {}),
-  };
+/** `/semilleros` (sin segmento) muestra el club por defecto; `/semilleros/<slug>`, el pedido. */
+function elegirClub(clubes: Club[], segmentos: string[] | undefined) {
+  if (segmentos && segmentos.length > 1) return null;
+  const slug = segmentos?.[0];
+  return slug ? clubDeSlug(clubes, slug) : clubPorDefecto(clubes);
 }
 
-type Props = { searchParams: Promise<ParametrosBusqueda> };
+/** Una página por club activo. Si la lectura falla en el build, el resto se genera bajo demanda. */
+export async function generateStaticParams() {
+  try {
+    return [{ club: [] }, ...(await listarClubes()).map((c) => ({ club: [c.slug] }))];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * El `canonical` de cada club es su ruta propia; `/semilleros` a secas muestra
+ * el club por defecto y apunta a la de ese club, para no tener dos direcciones
+ * indexables con el mismo contenido.
+ */
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const [clubes, { club: segmentos }] = await Promise.all([listarClubes(), params]);
+  const club = elegirClub(clubes, segmentos);
+  if (!club) return { title: TITULO, description: DESCRIPCION };
+
+  const titulo = `${club.nombre} · ${TITULO}`;
+  const descripcion = club.descripcion?.trim() || DESCRIPCION;
+  return {
+    title: titulo,
+    description: descripcion,
+    openGraph: { title: `${titulo} | TSW`, description: descripcion, type: "website" },
+    alternates: { canonical: `/semilleros/${club.slug}` },
+  };
+}
 
 /**
  * Niveles de formación, por club.
  *
- * Qué se ve sin `?club`: el primer registro de `tipo = "club"` por orden. Por
- * orden, porque lo decide el administrador desde el panel; y filtrando por
+ * Qué se ve en `/semilleros`: el primer registro de `tipo = "club"` por orden.
+ * Por orden, porque lo decide el administrador desde el panel; y filtrando por
  * tipo, porque si alguien reordena y queda un programa de primero, esta página
  * abriría en Habilidades Motrices, que no tiene niveles. Hoy es BMX Club TSW,
  * "el club de la casa" según el documento del cliente.
  *
- * Qué pasa con un slug que no existe o cuyo club está inactivo: se muestra el
- * club por defecto CON UN AVISO que lo dice. No en silencio —la URL diría un
- * club y la página mostraría otro— y no con un 404 —un enlace viejo del menú
- * o de un mensaje de WhatsApp debe llevar a algo útil, con el selector a la
- * vista—.
- *
- * Empecé por `redirect("/semilleros")`, que parecía más limpio, y no sirve
- * aquí: el layout público es asíncrono (lee los clubes para el menú), así que
- * la respuesta ya empezó a transmitirse cuando la página resuelve el club.
- * Next no puede mandar un 307 entonces y degrada a un `<meta http-equiv=
- * "refresh" content="1;url=…">`: un segundo de página a medio pintar antes
- * del salto. Medido, no supuesto.
+ * Un slug que no existe o cuyo club está inactivo es un 404, como cualquier
+ * ruta: ya no hay un `?club=` que "casi" funcione. El enlace viejo
+ * `/semilleros?club=<slug>` lo redirige el middleware (301) a la ruta nueva.
  *
  * Habilidades Motrices no tiene niveles y no es un descuido: es un PROGRAMA.
  * La rama va por `tipo === "programa"`, nunca por el slug, porque la regla
  * sale del dato. El día que la corporación sume otro programa, funciona solo.
  */
-export default async function PaginaSemilleros({ searchParams }: Props) {
-  const [clubes, semilleros, parametros] = await Promise.all([
+export default async function PaginaSemilleros({ params }: Props) {
+  const [clubes, semilleros, { club: segmentos }] = await Promise.all([
     listarClubes(),
     obtenerSemilleros(),
-    searchParams,
+    params,
   ]);
-  const seleccion = clubDeParametros(clubes, parametros);
 
   if (clubes.length === 0) return <SinClubes />;
 
-  const desconocido = seleccion.estado === "desconocido";
-  const club = seleccion.club ?? clubPorDefecto(clubes)!;
+  const club = elegirClub(clubes, segmentos);
+  if (!club) notFound();
   const esPrograma = club.tipo === "programa";
   const niveles = esPrograma ? [] : await listarNiveles(club.id);
 
@@ -113,12 +121,6 @@ export default async function PaginaSemilleros({ searchParams }: Props) {
         <h2 id="titulo-club" className="sr-only">
           {club.nombre}
         </h2>
-        {desconocido && (
-          <Aviso tono="aviso" className="mb-6">
-            El club o programa que pedías ya no está publicado. Te mostramos {club.nombre}; puedes
-            cambiarlo con el selector de arriba.
-          </Aviso>
-        )}
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
           <LogoClub
             nombre={club.nombre}

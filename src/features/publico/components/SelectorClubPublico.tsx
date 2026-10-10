@@ -1,23 +1,22 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
 import { SelectorDeporte } from "@/components/ui";
-import { enlaceConClub } from "../club-publico";
 
 export type OpcionClub = { slug: string; nombre: string };
 
 export type SelectorClubPublicoProps = {
   clubes: OpcionClub[];
-  /** Slug del club activo, resuelto en el servidor desde `?club=`. */
+  /** Slug del club activo, resuelto en el servidor desde la ruta. */
   valor: string;
   /** Sobre el HeroPagina oscuro va la paleta oscura del selector. */
   fondo?: "oscuro" | "claro";
 };
 
 /**
- * Elegir club navega a la misma ruta con `?club=<slug>`.
+ * Elegir club navega a `/semilleros/<slug>`.
  *
  * Reutiliza el primitivo `SelectorDeporte` de `/laboratorio` tal cual: mismo
  * desplegable en escritorio, misma hoja inferior en móvil, mismo teclado. Lo
@@ -30,7 +29,6 @@ export type SelectorClubPublicoProps = {
  */
 export function SelectorClubPublico({ clubes, valor, fondo = "claro" }: SelectorClubPublicoProps) {
   const router = useRouter();
-  const ruta = usePathname();
   const [pendiente, iniciar] = useTransition();
 
   // Con un solo club el selector no ofrece ninguna decisión: sobra.
@@ -43,7 +41,7 @@ export function SelectorClubPublico({ clubes, valor, fondo = "claro" }: Selector
         deportes={clubes.map((c) => ({ id: c.slug, nombre: c.nombre }))}
         valor={valor}
         fondo={fondo}
-        alCambiar={(slug) => iniciar(() => router.push(enlaceConClub(ruta, slug), { scroll: false }))}
+        alCambiar={(slug) => iniciar(() => router.push(`/semilleros/${encodeURIComponent(slug)}`, { scroll: false }))}
       />
     </div>
   );

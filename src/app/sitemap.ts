@@ -7,7 +7,7 @@ import { listarProductos } from "@/features/tienda/queries";
 /** Se regenera cada hora: un club o producto nuevo entra sin esperar un despliegue. */
 export const revalidate = 3600;
 
-const RUTAS_ESTATICAS = ["/", "/semilleros", "/competencias", "/matriculas", "/tienda"];
+const RUTAS_ESTATICAS = ["/", "/competencias", "/matriculas", "/tienda"];
 /** Mientras no estén aprobadas llevan `noindex` (plantilla.tsx): no se anuncian. */
 const RUTAS_LEGALES = ["/legal/datos", "/legal/terminos", "/legal/devoluciones"];
 
@@ -27,7 +27,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return [
       ...estaticas,
       ...clubes.map((c) => ({
-        url: `${URL_SITIO}/semilleros?club=${encodeURIComponent(c.slug)}`,
+        url: `${URL_SITIO}/semilleros/${encodeURIComponent(c.slug)}`,
         lastModified: c.actualizado_en,
       })),
       ...productos

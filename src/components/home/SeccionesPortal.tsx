@@ -135,7 +135,7 @@ export function ClubesPortal({ clubes, portada }: { clubes: Club[]; portada: Ent
                   </ul>
                 )}
                 <Link
-                  href={`/semilleros?club=${club.slug}`}
+                  href={`/semilleros/${club.slug}`}
                   className="mt-4 inline-flex min-h-[44px] items-center self-start font-semibold text-acento-oscuro underline-offset-4 hover:underline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-foco"
                 >
                   {club.tipo === "programa" ? "Ver el programa" : "Ver niveles"}

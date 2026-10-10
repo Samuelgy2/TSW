@@ -14,6 +14,31 @@ la paleta nueva, el menú de clubes, `/semilleros` por club, el contenido real
 del documento de la cliente, las tres páginas legales, los chequeos mecánicos y
 el contenido del sitio editable desde el panel.
 
+## Cierre de pendientes menores (2026-10-08, en `main`)
+
+- **Hook de git**: `npm install` ejecuta `prepare` y activa `.githooks`; no falla sin `.git`.
+- **SEO por club**: `/semilleros/[[...club]]` (un solo archivo sirve `/semilleros` y
+  `/semilleros/<slug>`). Cada club lleva title, description y canonical propios;
+  `/semilleros` muestra el club por defecto con canonical a su ruta. El middleware
+  redirige `/semilleros?club=<slug>` → `/semilleros/<slug>` (301). Un slug que no
+  existe o está inactivo es 404 real: lo valida `semilleros/[[...club]]/layout.tsx`
+  antes de que `loading.tsx` transmita (el `loading.tsx` general se movió al grupo
+  `(general)` para no envolverlo). El sitemap lista las rutas por club,
+  no `/semilleros` ni las de query. `revalidarPublico` invalida también
+  `/semilleros/[[...club]]`.
+- **Concurrencia de `alternar_deporte_activo`**: probada en un Postgres local
+  desechable (contenedor, no producción), dos conexiones `psql` sincronizadas.
+  20/20 vueltas: una falla, otra pasa, queda 1 activo. Control sin el `lock`: 6/6
+  vueltas dejan 0 activos (la prueba sí detecta la carrera).
+- **Imagen de nivel**: ya estaba implementada (migración `nivel_imagen`, aplicada en
+  remoto). Probada a nivel de RPC en local: fijar, guardar texto sin perder la
+  imagen, reemplazar, quitar, ruta inválida y nivel inexistente.
+- La cadena de migraciones **no se reproduce desde cero** con `supabase start`:
+  las migraciones de datos (`portada_hero_texto`, `desactivar_slides_de_prueba`,
+  `deporte_bmx_texto`, `clubes_datos_del_documento`, `carrusel_slides_reales`,
+  `borrar_pedido_de_prueba`) esperan filas y archivos que solo existen en
+  producción y abortan en una base vacía.
+
 ## Hecho
 
 **Parte E — contenido real** (commits `5be7097`, `708341c`)

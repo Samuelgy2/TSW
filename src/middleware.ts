@@ -33,9 +33,22 @@ import {
  * página pública.
  */
 export async function middleware(request: NextRequest) {
+  const ruta = request.nextUrl.pathname;
+
+  // Enlaces viejos `/semilleros?club=<slug>` → `/semilleros/<slug>` (301). Va
+  // primero: es una página pública y no necesita sesión. Se descartan todos los
+  // parámetros porque `club` era el único que esa página leía. Un slug con
+  // formato raro no se redirige (se evita construir rutas de basura).
+  const clubViejo = ruta === "/semilleros" ? request.nextUrl.searchParams.get("club") : null;
+  if (clubViejo && /^[a-z0-9-]+$/.test(clubViejo)) {
+    const destino = request.nextUrl.clone();
+    destino.pathname = `/semilleros/${clubViejo}`;
+    destino.search = "";
+    return NextResponse.redirect(destino, 301);
+  }
+
   let respuesta = NextResponse.next({ request });
 
-  const ruta = request.nextUrl.pathname;
   const esRutaAdmin = ruta.startsWith("/admin");
   const esRutaCuenta = ruta.startsWith("/cuenta");
   const hayCookieSesion = request.cookies.getAll().some((c) => c.name.startsWith("sb-"));

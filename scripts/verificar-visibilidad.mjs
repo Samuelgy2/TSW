@@ -136,7 +136,7 @@ try {
 
     for (const ruta of rutas) {
       // El detalle de producto solo se enlaza desde /tienda.
-      const otra = ES_PRODUCTO.test(ruta) ? "/tienda" : rutas.find((r) => r !== ruta && !r.startsWith("/semilleros?")) ?? "/";
+      const otra = ES_PRODUCTO.test(ruta) ? "/tienda" : rutas.find((r) => r !== ruta && !r.startsWith("/semilleros/")) ?? "/";
       const clic = async (r) => (await pesta.evaluar(clicEnlace(r))) === true;
 
       // 1. Llegar por clic desde otra página.

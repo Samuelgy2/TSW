@@ -154,7 +154,7 @@ export function HeroPortal({
             {clubes.map((club) => (
               <li key={club.id}>
                 <Link
-                  href={`/semilleros?club=${club.slug}`}
+                  href={`/semilleros/${club.slug}`}
                   className="group flex min-h-[44px] items-center justify-between gap-4 py-3 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-foco"
                 >
                   <span className="min-w-0">

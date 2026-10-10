@@ -35,9 +35,9 @@ const ANCHOS = [360, 1280];
 const RUTAS_POR_DEFECTO = [
   "/",
   "/semilleros",
-  "/semilleros?club=bmx-mastercross",
-  "/semilleros?club=habilidades-motrices",
-  "/semilleros?club=no-existe",
+  "/semilleros/bmx-mastercross",
+  "/semilleros/habilidades-motrices",
+  "/semilleros/no-existe",
   "/competencias",
   "/matriculas",
   "/tienda",

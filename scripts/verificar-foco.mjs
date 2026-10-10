@@ -47,7 +47,7 @@ const RUTAS = process.env.RUTAS
   : [
       "/",
       "/laboratorio",
-      "/semilleros?club=bmx-mastercross",
+      "/semilleros/bmx-mastercross",
       "/tienda",
       "/matriculas",
       // Una legal: el índice del documento son ~10 enlaces nuevos y el aviso de

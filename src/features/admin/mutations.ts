@@ -91,7 +91,11 @@ const RUTAS_POR_ENTIDAD = {
 export type EntidadRevalidable = keyof typeof RUTAS_POR_ENTIDAD;
 
 export function revalidarPublico(entidad: EntidadRevalidable, extra: string[] = []) {
-  for (const ruta of [...RUTAS_POR_ENTIDAD[entidad], ...extra]) revalidatePath(ruta);
+  for (const ruta of [...RUTAS_POR_ENTIDAD[entidad], ...extra]) {
+    revalidatePath(ruta);
+    // /semilleros y /semilleros/<club> son la misma página (segmento opcional): se invalidan juntas.
+    if (ruta === "/semilleros") revalidatePath("/semilleros/[[...club]]", "page");
+  }
 }
 
 type ErrorPostgres = { code?: string; message?: string; details?: string; hint?: string };
