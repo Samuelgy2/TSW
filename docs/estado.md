@@ -144,6 +144,13 @@ consulta. Es la sección 5 de `verificar:contenido-remoto`, que queda en 48 caso
 - **URL del preview de Vercel**: la rama está empujada, pero no hay CLI ni `gh` aquí. Hay que leerla del panel de Vercel o del check de GitHub. Ojo: el remoto `Samuelgy2/TSW` redirige a `tswbmxclub-support/TSW`; si el proyecto de Vercel está conectado a la cuenta vieja, puede no disparar.
 - **Proveedor Email en Supabase Auth: parece encendido, falta confirmarlo.** El 26-09-2026 `signInWithPassword` funcionó con el usuario temporal de la prueba de Storage, cosa imposible con el proveedor apagado. Lo que no está comprobado: que "Allow new users to sign up" siga apagado y que `${NEXT_PUBLIC_SITE_URL}/admin/auth/callback` esté en Redirect URLs. Se mira en el panel de Supabase.
 - **Datos de prueba**: los borra Samuel desde el panel, no por SQL. Son las competencias "Competencia publicada 1 y 2" con "Rider 1" y "Rider 2", los tres PDF de prueba de Matrículas y los productos con precios de $10 y $20.
+- **CSP con nonces** (middleware de Next) para quitar `'unsafe-inline'` de `script-src`. La rama `csp-bloqueo` activa la CSP en bloqueo, pero con `'unsafe-inline'`, que deja casi sin efecto la protección contra XSS.
+- **Probar la rama `csp-bloqueo` en local** con el checklist (subida de imágenes, QR del MFA, panel) antes de hacer merge a `main`.
+- **Actualización controlada de dependencias** (postcss en next, eslint-config-next); nunca `npm audit fix --force`.
+- **Seguridad, de la auditoría del 2026-10-10 (rama `seguridad-aal2`)**:
+  - Aplicar `20261010120000_rls_admin_exige_aal2.sql` y correr `npm run verificar:aal2` (reversa: `supabase/reversas/20261010120000_revertir_rls_aal2.sql.borrador`). Con ella, `ADMIN_MFA_OBLIGATORIO=false` ya no abre las lecturas del panel: la salida de emergencia es la reversa.
+  - Separar la clave HMAC de la actividad de la service role: variable propia (p. ej. `ACTIVIDAD_HMAC_SECRET`), en `.env.local` y Vercel.
+  - Punto de inactividad en las Server Actions: hoy el cierre por inactividad se decide en el navegador/middleware; falta comprobarlo también al ejecutar cada acción.
 
 ## Trampas del entorno
 
