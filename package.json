@@ -33,8 +33,9 @@
     "verificar:inventario": "tsx scripts/verificar-inventario.ts",
     "verificar:auditoria": "tsx scripts/verificar-auditoria.ts",
     "verificar:contenido-remoto": "tsx scripts/verificar-contenido-remoto.ts",
+    "verificar:aal2": "node scripts/verificar-aal2.mjs",
     "verificar": "npm run verificar:secretos && npm run verificar:paleta && npm run verificar:politicas && npm run verificar:parametros && npm run verificar:use-server && npm run verificar:club && npm run verificar:legales && npm run verificar:payload && npm run verificar:overflow && npm run verificar:visibilidad",
-    "verificar:remoto": "npm run verificar:rls && npm run verificar:inventario && npm run verificar:auditoria && npm run verificar:contenido-remoto",
+    "verificar:remoto": "npm run verificar:rls && npm run verificar:inventario && npm run verificar:auditoria && npm run verificar:contenido-remoto && npm run verificar:aal2",
     "prepare": "git config core.hooksPath .githooks || exit 0",
     "advisors": "supabase db advisors --linked --type all --level info"
   },

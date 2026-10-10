@@ -1,0 +1,30 @@
+-- Reversa de 20261010120000_rls_admin_exige_aal2.sql. NO es una migración
+-- (extensión .borrador): se corre a mano si un administrador queda fuera sin
+-- poder pasar el segundo factor. Devuelve las políticas a es_admin() a secas,
+-- es decir, deja el segundo factor solo en la aplicación.
+
+do $$
+declare
+  p record;
+begin
+  for p in
+    select schemaname, tablename, policyname, qual, with_check
+      from pg_policies
+     where schemaname in ('public', 'storage')
+       and not (schemaname = 'public' and tablename = 'perfil_admin')
+       and (coalesce(qual, '') like '%es_admin_aal2()%' or coalesce(with_check, '') like '%es_admin_aal2()%')
+  loop
+    execute format('alter policy %I on %I.%I%s%s',
+      p.policyname, p.schemaname, p.tablename,
+      case when p.qual is not null then format(' using (%s)', replace(p.qual, 'es_admin_aal2()', 'es_admin()')) else '' end,
+      case when p.with_check is not null then format(' with check (%s)', replace(p.with_check, 'es_admin_aal2()', 'es_admin()')) else '' end);
+  end loop;
+end
+$$;
+
+drop policy if exists perfil_admin_lectura_admin on public.perfil_admin;
+create policy perfil_admin_lectura_admin on public.perfil_admin
+  for select to authenticated
+  using (public.es_admin());
+
+drop function if exists public.es_admin_aal2();
