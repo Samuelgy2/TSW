@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 
 import { Aparece } from "@/lib/animaciones";
 import { Aviso, Badge, BotonWhatsApp, Seccion, SeccionTitulo } from "@/components/ui";
@@ -24,7 +24,7 @@ type Props = { params: Promise<{ slug: string }> };
 /**
  * Sin generateStaticParams: la consulta pasa por el cliente de servidor con
  * cookies (RLS + sesión de Supabase), así que la ruta es dinámica como el
- * resto del sitio. Un slug inexistente cae en notFound(), no en "agotado".
+ * resto del sitio. Un slug inexistente (producto eliminado o desactivado) redirige a /tienda.
  */
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -59,7 +59,8 @@ export default async function PaginaProducto({ params }: Props) {
   try {
     producto = await obtenerProductoPorSlug(slug);
   } catch (error) {
-    if (error instanceof ErrorNoEncontrado) notFound();
+    // Producto eliminado o desactivado: a la tienda, no a un 404.
+    if (error instanceof ErrorNoEncontrado) redirect("/tienda");
     throw error;
   }
 

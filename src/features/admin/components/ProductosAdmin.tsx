@@ -82,7 +82,11 @@ export function ProductosAdmin({
 }) {
   const router = useRouter();
   const [aviso, setAviso] = useState<ResultadoAccion | null>(null);
-  const [editando, setEditando] = useState<ProductoConVariantesCompletas | "nuevo" | null>(null);
+  // Se guarda el id y no el objeto: tras router.refresh() el editor lee la fila
+  // fresca (reservado, variantes nuevas) en vez de una copia vieja.
+  const [editandoId, setEditandoId] = useState<string | "nuevo" | null>(null);
+  const editando =
+    editandoId === "nuevo" ? "nuevo" : (productos.find((p) => p.id === editandoId) ?? null);
   const [confirmarDesactivar, setConfirmarDesactivar] = useState<ProductoConVariantesCompletas | null>(null);
   const [confirmarEliminar, setConfirmarEliminar] = useState<ProductoConVariantesCompletas | null>(null);
 
@@ -100,7 +104,7 @@ export function ProductosAdmin({
       {aviso?.ok && aviso.mensaje && <Aviso tono="exito" titulo="Listo">{aviso.mensaje}</Aviso>}
 
       <div className="flex justify-end">
-        <Boton onClick={() => setEditando("nuevo")}>Nuevo producto</Boton>
+        <Boton onClick={() => setEditandoId("nuevo")}>Nuevo producto</Boton>
       </div>
 
       <TablaResponsiva
@@ -139,7 +143,7 @@ export function ProductosAdmin({
             alinear: "derecha",
             render: (p) => (
               <div className="flex flex-wrap justify-end gap-2">
-                <Boton tamano="sm" variante="secundario" onClick={() => setEditando(p)}>
+                <Boton tamano="sm" variante="secundario" onClick={() => setEditandoId(p.id)}>
                   Editar
                 </Boton>
                 <Boton
@@ -168,10 +172,14 @@ export function ProductosAdmin({
         </p>
       )}
 
+      {/* key: ModalProducto inicializa su formulario con useState, que solo
+          lee el valor inicial al montar. Sin key, el modal (siempre montado)
+          arrancaba vacío y seguía vacío al pulsar Editar. */}
       <ModalProducto
+        key={editandoId ?? "cerrado"}
         clubes={clubes}
         producto={editando}
-        alCerrar={() => setEditando(null)}
+        alCerrar={() => setEditandoId(null)}
         onGuardado={(resultado) => {
           setAviso(resultado);
           if (resultado.ok) router.refresh();
