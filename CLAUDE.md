@@ -728,7 +728,7 @@ cero si cae cualquiera:
 `verificar:overflow` levanta `next dev` él mismo si el puerto no contesta y lo
 apaga al terminar por árbol de procesos: Next bifurca un hijo, y matar solo al
 padre dejaría el puerto ocupado y la corrida siguiente "reutilizando" código
-viejo. Si ya hay un servidor, lo reutiliza y no lo toca.
+viejo. Si el puerto ya contesta, falla: solo reutiliza el servidor con `REUTILIZAR_SERVIDOR=1`.
 
 **Las dos comprobaciones de overflow, y por qué hacen falta las dos:**
 `scrollWidth - clientWidth` daba positivo en cualquier página con un carrusel

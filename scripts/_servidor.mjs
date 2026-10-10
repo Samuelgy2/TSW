@@ -60,8 +60,8 @@ export function apagarServidor(servidor) {
 }
 
 /**
- * Levanta `next dev` en el puerto y espera a que conteste. Devuelve null si ya
- * había uno vivo, para no apagar el servidor de nadie al terminar.
+ * Levanta `next dev` en el puerto y espera a que conteste. Si ya hay uno vivo
+ * falla, salvo con REUTILIZAR_SERVIDOR=1 (entonces devuelve null y no lo apaga).
  *
  * Se arranca con node sobre el binario de Next y no con `npm run dev`: npm mete
  * un proceso intermedio (y en Windows, además, cmd.exe) del que `kill()` no sabe
@@ -71,7 +71,15 @@ export async function encenderServidor(puerto, modo = "dev") {
   const base = `http://localhost:${puerto}`;
 
   if (await servidorVivo(base)) {
-    console.log(`Reutilizando el servidor que ya contesta en ${base}.`);
+    // Un servidor que ya estaba ahí puede ser de otra corrida, de otro código o
+    // estar a medias: medir contra él daba fallos (y aciertos) que no eran del
+    // build. Solo se reutiliza si se pide a propósito.
+    if (process.env.REUTILIZAR_SERVIDOR !== "1") {
+      throw new Error(
+        `El puerto ${puerto} ya contesta y no es de este chequeo. Apaga ese servidor, o ejecuta con REUTILIZAR_SERVIDOR=1 para medir contra él.`,
+      );
+    }
+    console.log(`Reutilizando el servidor que ya contesta en ${base} (REUTILIZAR_SERVIDOR=1).`);
     return null;
   }
 
