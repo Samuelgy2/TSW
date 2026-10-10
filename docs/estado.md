@@ -9,7 +9,7 @@ porqué de cada decisión está en [CLAUDE.md](../CLAUDE.md); aquí solo el esta
 `main`**, que sigue sin tocar. El último es el que cierra la Parte G
 (`feat(sitio): capa de lectura y /admin/sitio`).
 
-Sale de `entrega/v1` y trae, en orden: login por código, migraciones 15 a 20,
+Sale de `entrega/v1` y trae, en orden: migraciones 15 a 20,
 la paleta nueva, el menú de clubes, `/semilleros` por club, el contenido real
 del documento de la cliente, las tres páginas legales, los chequeos mecánicos y
 el contenido del sitio editable desde el panel.
@@ -148,7 +148,7 @@ consulta. Es la sección 5 de `verificar:contenido-remoto`, que queda en 48 caso
 - **Probar la rama `csp-bloqueo` en local** con el checklist (subida de imágenes, QR del MFA, panel) antes de hacer merge a `main`.
 - **Actualización controlada de dependencias** (postcss en next, eslint-config-next); nunca `npm audit fix --force`.
 - **Seguridad, de la auditoría del 2026-10-10 (rama `seguridad-aal2`)**:
-  - Aplicar `20261010120000_rls_admin_exige_aal2.sql` y correr `npm run verificar:aal2` (reversa: `supabase/reversas/20261010120000_revertir_rls_aal2.sql.borrador`). Con ella, `ADMIN_MFA_OBLIGATORIO=false` ya no abre las lecturas del panel: la salida de emergencia es la reversa.
+  - Hecho el 2026-10-10: `20261010120000_rls_admin_exige_aal2.sql` aplicada y `npm run verificar:aal2` limpio (reversa, si hace falta: `supabase/reversas/20261010120000_revertir_rls_aal2.sql.borrador`). Con ella, `ADMIN_MFA_OBLIGATORIO=false` ya no abre las lecturas del panel: la salida de emergencia es la reversa.
   - Separar la clave HMAC de la actividad de la service role: variable propia (p. ej. `ACTIVIDAD_HMAC_SECRET`), en `.env.local` y Vercel.
   - Punto de inactividad en las Server Actions: hoy el cierre por inactividad se decide en el navegador/middleware; falta comprobarlo también al ejecutar cada acción.
 
