@@ -61,10 +61,10 @@ const NIT_PUBLICADO = `${NIT}-${NIT_DV}`;
 const RUTAS_TIENDA = ["/tienda", "/tienda/uniforme-oficial", "/carrito"];
 
 /** Donde el NIT aparecería si estuviera confirmado. */
-const RUTAS_CON_NIT = ["/", "/legal/datos", "/legal/terminos", "/legal/devoluciones"];
+const RUTAS_CON_NIT = ["/", "/legal/datos", "/legal/terminos", "/legal/devoluciones", "/legal/cookies"];
 
-/** Las tres páginas legales. */
-const RUTAS_LEGALES = ["/legal/datos", "/legal/terminos", "/legal/devoluciones"];
+/** Las páginas legales. */
+const RUTAS_LEGALES = ["/legal/datos", "/legal/terminos", "/legal/devoluciones", "/legal/cookies"];
 
 /** El aviso de borrador, tal como lo escribe la plantilla. */
 const AVISO_BORRADOR = "Borrador pendiente de revisión legal";
@@ -81,6 +81,7 @@ const RUTAS_PUBLICAS = [
   "/legal/datos",
   "/legal/terminos",
   "/legal/devoluciones",
+  "/legal/cookies",
 ];
 
 const cache = new Map();

@@ -9,7 +9,7 @@ export const revalidate = 3600;
 
 const RUTAS_ESTATICAS = ["/", "/competencias", "/matriculas", "/tienda"];
 /** Mientras no estén aprobadas llevan `noindex` (plantilla.tsx): no se anuncian. */
-const RUTAS_LEGALES = ["/legal/datos", "/legal/terminos", "/legal/devoluciones"];
+const RUTAS_LEGALES = ["/legal/datos", "/legal/terminos", "/legal/devoluciones", "/legal/cookies"];
 
 /**
  * Las dinámicas salen de la base con la anon key (RLS deja solo lo activo; las

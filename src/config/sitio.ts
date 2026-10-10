@@ -227,4 +227,5 @@ export const ENLACES_LEGALES = [
   { etiqueta: "Política de tratamiento de datos", href: "/legal/datos" },
   { etiqueta: "Términos y condiciones", href: "/legal/terminos" },
   { etiqueta: "Política de devoluciones", href: "/legal/devoluciones" },
+  { etiqueta: "Política de cookies", href: "/legal/cookies" },
 ] as const;

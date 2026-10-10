@@ -438,3 +438,126 @@ export const DEVOLUCIONES: ContenidoLegal = {
     },
   ],
 };
+
+// --- 4. Cookies y almacenamiento local -------------------------------------------
+
+/**
+ * Inventario REAL de lo que el sitio guarda en el navegador (revisado en el
+ * código, no copiado de una plantilla). Si se añade una cookie, una herramienta
+ * de analítica o publicidad, este documento y la necesidad de pedir aceptación
+ * cambian: hoy no se pide porque todo lo que se guarda es necesario para
+ * funcionar. Tiene que revisarlo un abogado, igual que los otros tres.
+ */
+export const POLITICA_COOKIES: ContenidoLegal = {
+  titulo: "Política de cookies",
+  bajada: "Qué guarda este sitio en su navegador, para qué y cómo puede borrarlo.",
+  descripcion:
+    "Cookies y almacenamiento local que usa el sitio de la Corporación Deportiva TSW: solo las necesarias para que el carrito y el panel funcionen. Sin publicidad ni analítica con cookies.",
+  secciones: [
+    {
+      id: "que-son",
+      titulo: "Qué son las cookies",
+      bloques: [
+        {
+          tipo: "parrafo",
+          texto:
+            "Una cookie es un archivo pequeño que el sitio guarda en su navegador. Sirve para recordar algo entre una página y la siguiente, por ejemplo que usted ya inició sesión. El almacenamiento local es parecido: un espacio del navegador donde el sitio guarda datos que no se envían al servidor.",
+        },
+        { tipo: "parrafo", texto: identificacion() },
+      ],
+    },
+    {
+      id: "visitantes",
+      titulo: "Si solo navega por el sitio",
+      bloques: [
+        {
+          tipo: "parrafo",
+          texto:
+            "Navegar por las páginas públicas no guarda ninguna cookie en su navegador. Lo único que se guarda es el contenido de su carrito de compras, en el almacenamiento local de su dispositivo, para que no se pierda si cierra la página.",
+        },
+        {
+          tipo: "definiciones",
+          items: [
+            {
+              termino: "tsw.carrito.v1 (almacenamiento local)",
+              texto:
+                "Productos, tallas y cantidades que usted agregó al carrito. No se envía al servidor ni contiene datos personales; se queda en su dispositivo hasta que vacíe el carrito o borre los datos del sitio.",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "administracion",
+      titulo: "Si es administrador del sitio",
+      bloques: [
+        {
+          tipo: "parrafo",
+          texto:
+            "Quienes administran el sitio inician sesión en el panel, y para ello se usan estas cookies. Son necesarias para que la sesión funcione y por eso no requieren su aceptación.",
+        },
+        {
+          tipo: "definiciones",
+          items: [
+            {
+              termino: "sb-…-auth-token",
+              texto:
+                "Mantiene la sesión iniciada. Es una cookie de sesión: se borra al cerrar el navegador o al cerrar la sesión.",
+            },
+            {
+              termino: "sb-…-code-verifier",
+              texto:
+                "Acompaña los enlaces de acceso y recuperación de contraseña que llegan por correo. Dura lo que dura ese trámite.",
+            },
+            {
+              termino: "tsw.actividad",
+              texto:
+                "Registra, firmada, la hora del último movimiento en el panel para cerrar la sesión tras 5 minutos de inactividad. Es una cookie de sesión.",
+            },
+            {
+              termino: "tsw.deporte",
+              texto:
+                "Recuerda qué deporte tiene seleccionado en el panel. Dura un año y no contiene datos personales.",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "terceros",
+      titulo: "Terceros, analítica y publicidad",
+      bloques: [
+        {
+          tipo: "lista",
+          items: [
+            "El sitio no usa cookies de publicidad, de seguimiento ni de redes sociales.",
+            "No incrusta contenido de terceros (mapas, videos, botones de redes) que instale cookies propias.",
+            "Para medir la velocidad de las páginas se usa Vercel Speed Insights, que registra tiempos de carga de forma agregada y no utiliza cookies.",
+            "Los enlaces a WhatsApp e Instagram abren esos servicios, que tienen sus propias políticas.",
+          ],
+        },
+      ],
+    },
+    {
+      id: "gestion",
+      titulo: "Cómo borrarlas o bloquearlas",
+      bloques: [
+        {
+          tipo: "parrafo",
+          texto:
+            "Puede ver, borrar o bloquear las cookies desde la configuración de su navegador (Chrome, Safari, Firefox y Edge lo permiten). Si bloquea las del panel, los administradores no podrán iniciar sesión; la navegación pública y el carrito no dependen de ellas. Para borrar el carrito, vacíelo desde la página del carrito o borre los datos del sitio en su navegador.",
+        },
+      ],
+    },
+    {
+      id: "cambios",
+      titulo: "Cambios y contacto",
+      bloques: [
+        {
+          tipo: "parrafo",
+          texto: `Si el sitio empieza a usar otras cookies, esta política se actualizará antes de hacerlo. ${CANAL} para cualquier duda sobre esta política.`,
+        },
+      ],
+    },
+  ],
+};
