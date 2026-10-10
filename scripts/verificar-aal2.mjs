@@ -33,12 +33,13 @@ function totp(secreto) {
 
 const correo = `verificacion-aal2-${Date.now()}@example.com`;
 const clave = randomBytes(12).toString("hex") + "Aa1!";
-const { data: creado, error: e0 } = await servicio.auth.admin.createUser({ email: correo, password: clave, email_confirm: true });
+const { data: creado, error: e0 } = await servicio.auth.admin.createUser({ email: correo, password: clave, email_confirm: true, app_metadata: { tipo: "admin" } });
 assert.ifError(e0);
 const id = creado.user.id;
 
 try {
-  const { error: ep } = await servicio.from("perfil_admin").insert({ id, nombre: "Verificación aal2", activo: true });
+  // El hook de auth.users crea el perfil_admin inactivo (app_metadata.tipo = admin); aquí solo se activa.
+  const { error: ep } = await servicio.from("perfil_admin").update({ activo: true }).eq("id", id);
   assert.ifError(ep);
 
   const c = nuevo();
