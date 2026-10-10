@@ -151,6 +151,7 @@ consulta. Es la sección 5 de `verificar:contenido-remoto`, que queda en 48 caso
   - Hecho el 2026-10-10: `20261010120000_rls_admin_exige_aal2.sql` aplicada y `npm run verificar:aal2` limpio (reversa, si hace falta: `supabase/reversas/20261010120000_revertir_rls_aal2.sql.borrador`). Con ella, `ADMIN_MFA_OBLIGATORIO=false` ya no abre las lecturas del panel: la salida de emergencia es la reversa.
   - Separar la clave HMAC de la actividad de la service role: variable propia (p. ej. `ACTIVIDAD_HMAC_SECRET`), en `.env.local` y Vercel.
   - Punto de inactividad en las Server Actions: hoy el cierre por inactividad se decide en el navegador/middleware; falta comprobarlo también al ejecutar cada acción.
+- **Endurecer funciones (migración `20261010130000_endurecer_funciones.sql`, escrita y probada en BEGIN/ROLLBACK, sin aplicar)**: revoca EXECUTE de `siguiente_version_documento` a authenticated, fija `search_path` y revoca `rls_auto_enable`. Pendiente posterior a aal2: **mover los helpers RLS (`es_admin`, `es_admin_aal2`, `es_usuario`) a un esquema privado**; hoy son ejecutables por authenticated porque las políticas los llaman.
 
 ## Trampas del entorno
 

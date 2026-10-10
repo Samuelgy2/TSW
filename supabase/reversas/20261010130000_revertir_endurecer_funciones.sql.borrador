@@ -1,0 +1,27 @@
+-- Reversa de 20261010130000_endurecer_funciones.sql. NO es una migración
+-- (extensión .borrador): se corre a mano. Devuelve los privilegios y el
+-- search_path de antes. Después: supabase migration repair --status reverted 20261010130000
+
+create or replace function public.siguiente_version_documento(p_documento_id uuid)
+returns integer
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(max(version), 0) + 1
+    from public.documento_version
+   where documento_id = p_documento_id;
+$$;
+
+grant execute on function public.siguiente_version_documento(uuid) to authenticated, service_role;
+
+alter function public.establecer_actor(uuid) reset search_path;
+
+do $$
+begin
+  if to_regprocedure('public.rls_auto_enable()') is not null then
+    grant execute on function public.rls_auto_enable() to public, anon, authenticated;
+  end if;
+end
+$$;
